@@ -14,15 +14,34 @@ class SalesTransactionService
 {
     public function paginate(array $filters, ?User $authUser = null): LengthAwarePaginator
     {
+        $userId = $filters['user_id'] ?? $filters['sales_id'] ?? null;
+        $year = $filters['year'] ?? null;
+        $principalId = $filters['principal_id'] ?? null;
+        $search = $filters['search'] ?? null;
+
         return SalesTransaction::query()
-            ->with(['opportunity', 'company', 'user'])
+            ->with(['opportunity.principal', 'company', 'user'])
             ->withCount('items')
             ->when($authUser && ! $this->canViewAll($authUser), fn ($query) => $query->where('user_id', $authUser->id))
             ->when($filters['company_id'] ?? null, fn ($query, $id) => $query->where('company_id', $id))
-            ->when($filters['user_id'] ?? null, fn ($query, $id) => $query->where('user_id', $id))
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($year && $year !== 'ALL', fn ($query) => $query->whereYear('transaction_date', $year))
             ->when($filters['from'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '>=', $date))
             ->when($filters['to'] ?? null, fn ($query, $date) => $query->whereDate('transaction_date', '<=', $date))
+            ->when($principalId, function ($query) use ($principalId) {
+                $query->where(function ($q) use ($principalId) {
+                    $q->whereHas('opportunity', fn ($sub) => $sub->where('principal_id', $principalId))
+                        ->orWhereHas('items.product', fn ($sub) => $sub->where('principal_id', $principalId));
+                });
+            })
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('transaction_number', 'like', "%{$search}%")
+                        ->orWhereHas('company', fn ($sub) => $sub->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('opportunity', fn ($sub) => $sub->where('title', 'like', "%{$search}%")->orWhere('project_name', 'like', "%{$search}%"));
+                });
+            })
             ->orderByDesc('transaction_date')
             ->paginate($filters['per_page'] ?? 15);
     }

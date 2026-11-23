@@ -1,0 +1,446 @@
+[
+  {
+    "principal": "AWS",
+    "component": "EC2",
+    "specification": "2 vCPU, 4 GB RAM",
+    "price": 600000
+  },
+  {
+    "principal": "AWS",
+    "component": "EC2",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 1500000
+  },
+  {
+    "principal": "AWS",
+    "component": "EC2",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 3000000
+  },
+  {
+    "principal": "AWS",
+    "component": "EC2",
+    "specification": "8 vCPU, 32 GB RAM",
+    "price": 6000000
+  },
+  {
+    "principal": "AWS",
+    "component": "EC2",
+    "specification": "16 vCPU, 64 GB RAM",
+    "price": 12000000
+  },
+  {
+    "principal": "AWS",
+    "component": "EBS Storage",
+    "specification": "100 GB SSD",
+    "price": 200000
+  },
+  {
+    "principal": "AWS",
+    "component": "EBS Storage",
+    "specification": "500 GB SSD",
+    "price": 1000000
+  },
+  {
+    "principal": "AWS",
+    "component": "EBS Storage",
+    "specification": "1 TB SSD",
+    "price": 2000000
+  },
+  {
+    "principal": "AWS",
+    "component": "S3 Storage",
+    "specification": "1 TB Object Storage",
+    "price": 350000
+  },
+  {
+    "principal": "AWS",
+    "component": "RDS Database",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 3000000
+  },
+  {
+    "principal": "AWS",
+    "component": "RDS Database",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 6000000
+  },
+  {
+    "principal": "AWS",
+    "component": "Load Balancer",
+    "specification": "1 unit/bulan",
+    "price": 500000
+  },
+  {
+    "principal": "AWS",
+    "component": "Data Transfer",
+    "specification": "1 TB outbound",
+    "price": 1500000
+  },
+  {
+    "principal": "AWS",
+    "component": "Cloud Monitoring",
+    "specification": "1 environment",
+    "price": 500000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ECS Instance",
+    "specification": "2 vCPU, 4 GB RAM",
+    "price": 500000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ECS Instance",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 1200000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ECS Instance",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 2400000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ECS Instance",
+    "specification": "8 vCPU, 32 GB RAM",
+    "price": 4800000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ECS Instance",
+    "specification": "16 vCPU, 64 GB RAM",
+    "price": 9600000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Cloud Disk",
+    "specification": "100 GB SSD",
+    "price": 150000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Cloud Disk",
+    "specification": "500 GB SSD",
+    "price": 750000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Cloud Disk",
+    "specification": "1 TB SSD",
+    "price": 1500000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "OSS Storage",
+    "specification": "1 TB Object Storage",
+    "price": 300000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ApsaraDB",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 2500000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "ApsaraDB",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 5000000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Load Balancer",
+    "specification": "1 unit/bulan",
+    "price": 450000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Bandwidth",
+    "specification": "100 Mbps",
+    "price": 1000000
+  },
+  {
+    "principal": "Alibaba Cloud",
+    "component": "Monitoring",
+    "specification": "1 environment",
+    "price": 400000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "ECS Instance",
+    "specification": "2 vCPU, 4 GB RAM",
+    "price": 550000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "ECS Instance",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 1300000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "ECS Instance",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 2600000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "ECS Instance",
+    "specification": "8 vCPU, 32 GB RAM",
+    "price": 5200000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "ECS Instance",
+    "specification": "16 vCPU, 64 GB RAM",
+    "price": 10400000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "EVS Storage",
+    "specification": "100 GB SSD",
+    "price": 175000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "EVS Storage",
+    "specification": "500 GB SSD",
+    "price": 875000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "EVS Storage",
+    "specification": "1 TB SSD",
+    "price": 1750000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "OBS Storage",
+    "specification": "1 TB Object Storage",
+    "price": 325000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "RDS Database",
+    "specification": "2 vCPU, 8 GB RAM",
+    "price": 2800000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "RDS Database",
+    "specification": "4 vCPU, 16 GB RAM",
+    "price": 5600000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "Elastic Load Balance",
+    "specification": "1 unit/bulan",
+    "price": 475000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "Bandwidth",
+    "specification": "100 Mbps",
+    "price": 1100000
+  },
+  {
+    "principal": "Huawei Cloud",
+    "component": "Cloud Monitoring",
+    "specification": "1 environment",
+    "price": 450000
+  },
+  {
+    "principal": "Dell",
+    "component": "Server Base",
+    "specification": "Rack Server 1U",
+    "price": 45000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Server Base",
+    "specification": "Rack Server 2U",
+    "price": 60000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Processor",
+    "specification": "Intel Xeon 16 Core",
+    "price": 25000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Processor",
+    "specification": "Intel Xeon 32 Core",
+    "price": 45000000
+  },
+  {
+    "principal": "Dell",
+    "component": "RAM",
+    "specification": "32 GB ECC RDIMM",
+    "price": 5000000
+  },
+  {
+    "principal": "Dell",
+    "component": "RAM",
+    "specification": "64 GB ECC RDIMM",
+    "price": 9000000
+  },
+  {
+    "principal": "Dell",
+    "component": "RAM",
+    "specification": "128 GB ECC RDIMM",
+    "price": 18000000
+  },
+  {
+    "principal": "Dell",
+    "component": "SSD",
+    "specification": "960 GB Enterprise SSD",
+    "price": 5000000
+  },
+  {
+    "principal": "Dell",
+    "component": "SSD",
+    "specification": "1,92 TB Enterprise SSD",
+    "price": 9000000
+  },
+  {
+    "principal": "Dell",
+    "component": "SSD",
+    "specification": "3,84 TB Enterprise SSD",
+    "price": 17000000
+  },
+  {
+    "principal": "Dell",
+    "component": "HDD",
+    "specification": "4 TB Enterprise HDD",
+    "price": 3500000
+  },
+  {
+    "principal": "Dell",
+    "component": "HDD",
+    "specification": "8 TB Enterprise HDD",
+    "price": 6000000
+  },
+  {
+    "principal": "Dell",
+    "component": "RAID Controller",
+    "specification": "Hardware RAID Controller",
+    "price": 8000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Network Card",
+    "specification": "10 GbE Dual Port",
+    "price": 8000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Power Supply",
+    "specification": "Redundant PSU",
+    "price": 6000000
+  },
+  {
+    "principal": "Dell",
+    "component": "Support",
+    "specification": "ProSupport 3 Tahun",
+    "price": 15000000
+  },
+  {
+    "principal": "HPE",
+    "component": "Server Base",
+    "specification": "ProLiant Rack Server 1U",
+    "price": 50000000
+  },
+  {
+    "principal": "HPE",
+    "component": "Server Base",
+    "specification": "ProLiant Rack Server 2U",
+    "price": 65000000
+  },
+  {
+    "principal": "HPE",
+    "component": "Processor",
+    "specification": "Intel Xeon 16 Core",
+    "price": 27000000
+  },
+  {
+    "principal": "HPE",
+    "component": "Processor",
+    "specification": "Intel Xeon 32 Core",
+    "price": 48000000
+  },
+  {
+    "principal": "HPE",
+    "component": "RAM",
+    "specification": "32 GB ECC RDIMM",
+    "price": 5500000
+  },
+  {
+    "principal": "HPE",
+    "component": "RAM",
+    "specification": "64 GB ECC RDIMM",
+    "price": 10000000
+  },
+  {
+    "principal": "HPE",
+    "component": "RAM",
+    "specification": "128 GB ECC RDIMM",
+    "price": 19000000
+  },
+  {
+    "principal": "HPE",
+    "component": "SSD",
+    "specification": "960 GB Enterprise SSD",
+    "price": 5500000
+  },
+  {
+    "principal": "HPE",
+    "component": "SSD",
+    "specification": "1,92 TB Enterprise SSD",
+    "price": 10000000
+  },
+  {
+    "principal": "HPE",
+    "component": "SSD",
+    "specification": "3,84 TB Enterprise SSD",
+    "price": 18000000
+  },
+  {
+    "principal": "HPE",
+    "component": "HDD",
+    "specification": "4 TB Enterprise HDD",
+    "price": 4000000
+  },
+  {
+    "principal": "HPE",
+    "component": "HDD",
+    "specification": "8 TB Enterprise HDD",
+    "price": 6500000
+  },
+  {
+    "principal": "HPE",
+    "component": "RAID Controller",
+    "specification": "Smart Array Controller",
+    "price": 9000000
+  },
+  {
+    "principal": "HPE",
+    "component": "Network Card",
+    "specification": "10 GbE Dual Port",
+    "price": 8500000
+  },
+  {
+    "principal": "HPE",
+    "component": "Power Supply",
+    "specification": "Redundant PSU",
+    "price": 6500000
+  },
+  {
+    "principal": "HPE",
+    "component": "Support",
+    "specification": "Tech Care 3 Tahun",
+    "price": 18000000
+  }
+]

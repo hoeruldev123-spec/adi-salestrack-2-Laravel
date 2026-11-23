@@ -31,8 +31,8 @@ class ScenarioForecastService
             }
 
             $value = $opportunity['value'];
-            if ($opportunityAdjustment > 0) {
-                $value *= (1 + $opportunityAdjustment / 100);
+            if ($opportunityAdjustment != 0.0) {
+                $value = max(0.0, $value * (1 + $opportunityAdjustment / 100));
             }
 
             $adjusted[] = [
@@ -43,8 +43,8 @@ class ScenarioForecastService
 
         $results = $this->monteCarlo->simulateOpportunities($adjusted, $run->simulation_count, $seed);
 
-        if ($revenueAdjustment > 0) {
-            $results = array_map(fn ($value) => $value + $revenueAdjustment, $results);
+        if ($revenueAdjustment != 0.0) {
+            $results = array_map(fn ($value) => max(0.0, $value + $revenueAdjustment), $results);
         }
 
         return $results;

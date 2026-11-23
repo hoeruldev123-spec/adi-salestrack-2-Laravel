@@ -14,7 +14,10 @@ export interface TransactionItem {
 export interface SalesTransaction {
   id: number
   opportunity_id: number | null
-  opportunity?: { id: number; title: string } | null
+  opportunity?: { id: number; title: string; principal?: { id: number; name: string } | null } | null
+  company?: { id: number; name: string } | null
+  user?: { id: number; name: string } | null
+  sales?: { id: number; name: string } | null
   transaction_number?: string
   transaction_date?: string | null
   status: string
@@ -26,9 +29,10 @@ export interface SalesTransaction {
 interface RawTransaction {
   id: number
   transaction_number?: string | null
-  opportunity?: { id: number; title: string } | null
+  opportunity?: { id: number; title: string; principal?: { id: number; name: string } | null } | null
   company?: { id: number; name: string } | null
   user?: { id: number; name: string } | null
+  sales?: { id: number; name: string } | null
   transaction_date?: string | null
   total_amount: number
   status: string
@@ -49,6 +53,9 @@ function mapTransaction(raw: RawTransaction): SalesTransaction {
     id: raw.id,
     opportunity_id: raw.opportunity?.id ?? null,
     opportunity: raw.opportunity,
+    company: raw.company,
+    user: raw.user,
+    sales: raw.sales ?? raw.user,
     transaction_number: raw.transaction_number ?? undefined,
     transaction_date: raw.transaction_date,
     status: raw.status,

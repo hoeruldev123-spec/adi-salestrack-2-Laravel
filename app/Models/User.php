@@ -52,6 +52,16 @@ class User extends Authenticatable
         return $this->hasMany(ForecastRun::class, 'created_by');
     }
 
+    public function ownedForecastRuns(): HasMany
+    {
+        return $this->hasMany(ForecastRun::class, 'user_id');
+    }
+
+    public function salesActivities(): HasMany
+    {
+        return $this->hasMany(Activity::class);
+    }
+
     public function hasRole(string $role): bool
     {
         return $this->role?->name === $role;

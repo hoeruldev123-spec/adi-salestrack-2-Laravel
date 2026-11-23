@@ -14,10 +14,16 @@ import {
   Receipt,
   BarChart3,
   TrendingUp,
+  LineChart,
   LogOut,
   Menu,
   X,
   ChevronDown,
+  Tags,
+  ClipboardList,
+  BadgeDollarSign,
+  BookOpen,
+  Lightbulb,
 } from 'lucide-vue-next'
 
 const auth = useAuthStore()
@@ -30,6 +36,7 @@ const masterOpen = ref(false)
 const menus = computed(() => {
   const items: Array<{ label: string; key: string; to?: string; icon: unknown; children?: Array<{ label: string; to: string; icon: unknown }> }> = [
     { label: 'Dashboard', key: 'dashboard', to: '/', icon: LayoutDashboard },
+    { label: 'Katalog Produk', key: 'catalog', to: '/catalog', icon: BookOpen },
     {
       label: 'Master Data',
       key: 'master',
@@ -40,6 +47,9 @@ const menus = computed(() => {
         { label: 'Companies', to: '/companies', icon: Building2 },
         { label: 'Principals', to: '/principals', icon: Factory },
         { label: 'Products', to: '/products', icon: Package },
+        { label: 'Kategori Produk', to: '/product-categories', icon: Tags },
+        { label: 'Spesifikasi Produk', to: '/product-specifications', icon: ClipboardList },
+        { label: 'Price List', to: '/price-lists', icon: BadgeDollarSign },
       ],
     },
     { label: 'Opportunity', key: 'opportunities', to: '/opportunities', icon: Target },
@@ -52,6 +62,18 @@ const menus = computed(() => {
       to: '/forecasts',
       icon: TrendingUp,
     },
+    {
+      label: 'Hasil Simulasi Monte Carlo',
+      key: 'simulation_results',
+      to: '/simulation-results',
+      icon: LineChart,
+    },
+    {
+      label: 'Rekomendasi',
+      key: 'recommendations',
+      to: '/recommendations',
+      icon: Lightbulb,
+    },
   ]
   return items.filter((m) => auth.canAccess(m.key))
 })
@@ -60,7 +82,7 @@ watch(
   () => route.fullPath,
   () => {
     mobileOpen.value = false
-    if (route.path.startsWith('/users') || route.path.startsWith('/roles') || route.path.startsWith('/companies') || route.path.startsWith('/principals') || route.path.startsWith('/products')) {
+    if (route.meta.menu === 'master') {
       masterOpen.value = true
     }
   },

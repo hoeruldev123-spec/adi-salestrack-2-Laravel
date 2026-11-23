@@ -4,7 +4,9 @@ namespace App\Services\Forecast;
 
 use App\Models\ForecastRun;
 use App\Models\ForecastScenario;
+use App\Models\Opportunity;
 use App\Models\SalesTransaction;
+use Carbon\Carbon;
 
 class ForecastEvaluationService
 {
@@ -68,6 +70,16 @@ class ForecastEvaluationService
             ];
         }
 
+        $metrics = $this->evaluate(
+            [(float) $run->result->mean],
+            [$actual]
+        );
+
+        $run->update([
+            'actual_revenue' => $actual,
+            'mape' => $metrics['mape'],
+        ]);
+
         return [
             'status' => 'EVALUATED',
             'forecast_type' => $run->forecast_type,
@@ -75,10 +87,7 @@ class ForecastEvaluationService
             'forecast_median' => (float) $run->result->median,
             'actual_revenue' => $actual,
             'absolute_error' => round(abs($actual - (float) $run->result->mean), 2),
-            'metrics' => $this->evaluate(
-                [(float) $run->result->mean],
-                [$actual]
-            ),
+            'metrics' => $metrics,
         ];
     }
 
@@ -87,12 +96,149 @@ class ForecastEvaluationService
      */
     public function actualRevenue(ForecastRun $run): ?float
     {
-        $total = SalesTransaction::query()
-            ->where('status', 'PAID')
-            ->whereBetween('transaction_date', [$run->period_start, $run->period_end])
-            ->sum('total_amount');
+        $start = $run->forecastStart()->toDateString();
+        $end = $run->forecastEnd()->toDateString();
 
-        return (float) $total;
+        $actual = $this->actualRevenueForPeriod($start, $end);
+
+        return $actual > 0 ? $actual : null;
+    }
+
+    /**
+     * Actual revenue for a date range, preferring realized sales transactions
+     * and falling back to WON opportunities when no transaction exists.
+     */
+    public function actualRevenueForPeriod(string $start, string $end): float
+    {
+        $query = SalesTransaction::query()
+            ->where('status', 'PAID')
+            ->whereBetween('transaction_date', [$start, $end]);
+
+        if ($query->exists()) {
+            return (float) $query->sum('total_amount');
+        }
+
+        $oppQuery = Opportunity::query()
+            ->where('status', 'WON')
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('actual_closing_date', [$start, $end])
+                    ->orWhere(function ($query) use ($start, $end) {
+                        $query->whereNull('actual_closing_date')
+                            ->whereBetween('closing_date', [$start, $end]);
+                    })
+                    ->orWhere(function ($query) use ($start, $end) {
+                        $query->whereNull('actual_closing_date')
+                            ->whereNull('closing_date')
+                            ->whereBetween('expected_close_date', [$start, $end]);
+                    });
+            });
+
+        if ($oppQuery->exists()) {
+            return (float) ($oppQuery->sum('estimated_value') ?: $oppQuery->sum('value'));
+        }
+
+        return 0.0;
+    }
+
+    /**
+     * Monthly forecast vs actual comparison and MAPE evaluation.
+     *
+     * @return array<string, mixed>
+     */
+    public function monthlyEvaluation(ForecastRun $run): array
+    {
+        $start = $run->forecastStart()->copy()->startOfMonth();
+        $end = $run->forecastEnd()->copy()->startOfMonth();
+        $result = $run->result()->first();
+        $forecastTotal = (float) ($run->predicted_revenue ?? $result?->mean ?? 0);
+
+        $opportunities = app(OpportunityForecastService::class)->opportunities($run);
+        $expectedByMonth = [];
+
+        foreach ($opportunities as $opportunity) {
+            if (! $opportunity['closing_date']) {
+                continue;
+            }
+
+            $month = Carbon::parse($opportunity['closing_date'])->format('Y-m');
+            $expectedByMonth[$month] = ($expectedByMonth[$month] ?? 0)
+                + (float) $opportunity['value'] * (float) $opportunity['probability'];
+        }
+
+        $expectedTotal = array_sum($expectedByMonth);
+        $monthCount = max(1, (int) $start->diffInMonths($end) + 1);
+        $periods = [];
+        $validErrors = [];
+        $totalActual = 0.0;
+
+        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addMonth()) {
+            $monthKey = $cursor->format('Y-m');
+            $monthStart = $cursor->copy()->startOfMonth()->toDateString();
+            $monthEnd = $cursor->copy()->endOfMonth()->toDateString();
+            $actual = $this->actualRevenueForPeriod($monthStart, $monthEnd);
+
+            $forecast = $expectedTotal > 0
+                ? (($expectedByMonth[$monthKey] ?? 0) / $expectedTotal) * $forecastTotal
+                : $forecastTotal / $monthCount;
+
+            $error = $actual > 0 ? abs($actual - $forecast) / $actual * 100 : null;
+
+            if ($error !== null) {
+                $validErrors[] = $error;
+            }
+
+            $totalActual += $actual;
+
+            $periods[] = [
+                'period' => $monthKey,
+                'label' => $cursor->copy()->locale('id')->translatedFormat('F Y'),
+                'forecast' => round($forecast, 2),
+                'actual' => round($actual, 2),
+                'error_percentage' => $error !== null ? round($error, 2) : null,
+                'status' => $actual > 0 ? 'EVALUATED' : 'NO_ACTUAL',
+            ];
+        }
+
+        $mape = count($validErrors) > 0
+            ? round(array_sum($validErrors) / count($validErrors), 2)
+            : null;
+
+        if ($mape !== null) {
+            $run->update([
+                'actual_revenue' => round($totalActual, 2),
+                'mape' => $mape,
+            ]);
+        }
+
+        return [
+            'forecast_run_id' => $run->id,
+            'status' => $mape !== null ? 'EVALUATED' : 'NO_ACTUAL_DATA',
+            'forecast_period' => [
+                'start' => $run->forecastStart()->toDateString(),
+                'end' => $run->forecastEnd()->toDateString(),
+            ],
+            'periods' => $periods,
+            'mape' => $mape,
+            'interpretation' => $mape !== null
+                ? $this->mapeInterpretation($mape)
+                : 'MAPE tidak dapat dihitung karena belum ada pendapatan aktual pada periode forecast.',
+            'evaluated_periods' => count($validErrors),
+            'skipped_periods' => count($periods) - count($validErrors),
+            'forecast_revenue' => round($forecastTotal, 2),
+            'actual_revenue' => round($totalActual, 2),
+            'total_forecast' => round(array_sum(array_column($periods, 'forecast')), 2),
+            'total_actual' => round($totalActual, 2),
+        ];
+    }
+
+    public function mapeInterpretation(float $mape): string
+    {
+        return match (true) {
+            $mape < 10 => 'Akurasi sangat baik',
+            $mape <= 20 => 'Akurasi baik',
+            $mape <= 50 => 'Akurasi cukup',
+            default => 'Akurasi rendah',
+        };
     }
 
     /**

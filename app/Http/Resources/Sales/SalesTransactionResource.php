@@ -15,12 +15,20 @@ class SalesTransactionResource extends JsonResource
             'opportunity' => $this->whenLoaded('opportunity', fn () => [
                 'id' => $this->opportunity->id,
                 'title' => $this->opportunity->title,
+                'principal' => $this->opportunity->principal ? [
+                    'id' => $this->opportunity->principal->id,
+                    'name' => $this->opportunity->principal->name,
+                ] : null,
             ]),
             'company' => $this->whenLoaded('company', fn () => [
                 'id' => $this->company->id,
                 'name' => $this->company->name,
             ]),
             'user' => $this->whenLoaded('user', fn () => [
+                'id' => $this->user->id,
+                'name' => $this->user->name,
+            ]),
+            'sales' => $this->whenLoaded('user', fn () => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
             ]),

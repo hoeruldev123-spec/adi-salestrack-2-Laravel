@@ -20,6 +20,7 @@ class StorePrincipalRequest extends FormRequest
             'description' => ['nullable', 'string'],
             'website' => ['nullable', 'url', 'max:255'],
             'status' => ['sometimes', Rule::in(EntityStatus::values())],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

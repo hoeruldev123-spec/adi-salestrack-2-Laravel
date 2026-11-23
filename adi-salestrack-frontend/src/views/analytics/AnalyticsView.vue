@@ -3,25 +3,31 @@ import { computed, onMounted, ref } from 'vue'
 import { analyticsApi, type PipelineData } from '@/api/analytics'
 import { useFormat } from '@/composables/useFormat'
 import { useUiStore } from '@/stores/ui'
+import { AVAILABLE_YEARS } from '@/constants'
 import BaseChart from '@/components/charts/BaseChart.vue'
 import KpiCard from '@/components/analytics/KpiCard.vue'
-import { Layers, CircleCheck, Percent } from 'lucide-vue-next'
+import { Layers, CircleCheck, Percent, Banknote } from 'lucide-vue-next'
 
 const { formatRupiah, formatPercent } = useFormat()
 const ui = useUiStore()
 
-const year = ref(new Date().getFullYear())
+const year = ref<number | 'ALL'>('ALL')
 const revenue = ref<Awaited<ReturnType<typeof analyticsApi.revenue>> | null>(null)
 const pipeline = ref<PipelineData | null>(null)
 const performance = ref<Awaited<ReturnType<typeof analyticsApi.performance>> | null>(null)
 const loading = ref(true)
+
+const totalRevenue = computed(() => {
+  if (revenue.value?.total !== undefined) return revenue.value.total
+  return (revenue.value?.data ?? []).reduce((acc, d) => acc + d.revenue, 0)
+})
 
 async function load() {
   loading.value = true
   try {
     const [rev, pipe, perf] = await Promise.all([
       analyticsApi.revenue({ year: year.value }),
-      analyticsApi.pipeline(),
+      analyticsApi.pipeline({ year: year.value }),
       analyticsApi.performance({ year: year.value }),
     ])
     revenue.value = rev
@@ -140,23 +146,26 @@ onMounted(load)
 <template>
   <div class="space-y-6">
     <div class="flex items-center justify-between">
-      <select v-model.number="year" class="input !w-32" @change="load">
-        <option :value="year - 1">{{ year - 1 }}</option>
-        <option :value="year">{{ year }}</option>
-        <option :value="year + 1">{{ year + 1 }}</option>
-      </select>
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium text-slate-700">Filter Periode:</label>
+        <select v-model="year" class="input !w-44" @change="load">
+          <option value="ALL">Semua Periode</option>
+          <option v-for="y in AVAILABLE_YEARS" :key="y" :value="y">{{ y }}</option>
+        </select>
+      </div>
     </div>
 
-    <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <KpiCard title="Total Revenue" :value="formatRupiah(totalRevenue)" :loading="loading" :icon="Banknote" color="emerald" />
       <KpiCard title="Total Pipeline" :value="formatRupiah(pipeline?.total_pipeline)" :loading="loading" :icon="Layers" color="indigo" />
-      <KpiCard title="Open" :value="String(pipeline?.open_count ?? '-')" :loading="loading" :icon="Layers" color="blue" />
-      <KpiCard title="Won" :value="String(pipeline?.won_count ?? '-')" :loading="loading" :icon="CircleCheck" color="emerald" />
+      <KpiCard title="Open Deals" :value="String(pipeline?.open_count ?? '-')" :loading="loading" :icon="Layers" color="blue" />
+      <KpiCard title="Won Deals" :value="String(pipeline?.won_count ?? '-')" :loading="loading" :icon="CircleCheck" color="cyan" />
       <KpiCard title="Win Rate" :value="formatPercent(pipeline?.win_rate)" :loading="loading" :icon="Percent" color="purple" />
     </div>
 
     <div class="grid gap-4 lg:grid-cols-2">
       <div class="card p-5">
-        <h3 class="mb-4 text-sm font-semibold text-slate-800">Revenue {{ year }}</h3>
+        <h3 class="mb-4 text-sm font-semibold text-slate-800">Revenue {{ year === 'ALL' ? '(Semua Periode)' : year }}</h3>
         <BaseChart v-if="(revenue?.data ?? []).length" :config="revenueChart" :height="280" />
         <p v-else-if="!loading" class="py-16 text-center text-sm text-slate-500">Belum ada data revenue</p>
       </div>
@@ -175,7 +184,7 @@ onMounted(load)
     </div>
 
     <div class="card p-5">
-      <h3 class="mb-4 text-sm font-semibold text-slate-800">Performa Sales {{ year }}</h3>
+      <h3 class="mb-4 text-sm font-semibold text-slate-800">Performa Sales {{ year === 'ALL' ? '(Semua Periode)' : year }}</h3>
       <BaseChart v-if="(performance?.sales ?? []).length" :config="performanceChart" :height="Math.max(260, (performance?.sales?.length ?? 0) * 48)" />
       <p v-else-if="!loading" class="py-16 text-center text-sm text-slate-500">Belum ada data performa</p>
     </div>

@@ -14,7 +14,7 @@ class AnalyticsController extends Controller
     public function dashboard(Request $request)
     {
         return ApiResponse::success(
-            $this->analyticsService->dashboard($request->query('year')),
+            $this->analyticsService->dashboard($request->query('year'), $request->user()),
             'Dashboard analytics retrieved successfully'
         );
     }
@@ -22,15 +22,15 @@ class AnalyticsController extends Controller
     public function revenue(Request $request)
     {
         return ApiResponse::success(
-            $this->analyticsService->revenue($request->only(['year', 'from', 'to'])),
+            $this->analyticsService->revenue($request->only(['year', 'from', 'to']), $request->user()),
             'Revenue analytics retrieved successfully'
         );
     }
 
-    public function pipeline()
+    public function pipeline(Request $request)
     {
         return ApiResponse::success(
-            $this->analyticsService->pipeline(),
+            $this->analyticsService->pipeline($request->user(), $request->query('year')),
             'Pipeline analytics retrieved successfully'
         );
     }
@@ -38,7 +38,7 @@ class AnalyticsController extends Controller
     public function performance(Request $request)
     {
         return ApiResponse::success(
-            $this->analyticsService->performance($request->only(['year', 'from', 'to'])),
+            $this->analyticsService->performance($request->only(['year', 'from', 'to']), $request->user()),
             'Performance analytics retrieved successfully'
         );
     }

@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Target,
 } from 'lucide-vue-next'
+import { AVAILABLE_YEARS } from '@/constants'
 import BaseChart from '@/components/charts/BaseChart.vue'
 import KpiCard from '@/components/analytics/KpiCard.vue'
 import BaseBadge from '@/components/common/BaseBadge.vue'
@@ -24,7 +25,7 @@ const ui = useUiStore()
 const router = useRouter()
 const auth = useAuthStore()
 
-const year = ref(new Date().getFullYear())
+const year = ref<number | 'ALL'>('ALL')
 const loading = ref(true)
 const data = ref<DashboardData | null>(null)
 
@@ -42,7 +43,7 @@ async function load() {
 const revenueChart = computed(() => ({
   type: 'bar' as const,
   data: {
-    labels: (data.value?.monthly_revenue ?? []).map((m) => m.month),
+    labels: (data.value?.monthly_revenue ?? []).map((m) => m.month || (m as any).period),
     datasets: [
       {
         label: 'Revenue',
@@ -99,11 +100,13 @@ onMounted(load)
         <h2 class="text-lg font-semibold text-slate-900">Halo, {{ auth.user?.name?.split(' ')[0] }}!</h2>
         <p class="text-sm text-slate-500">Ringkasan performa penjualan Anda.</p>
       </div>
-      <select v-model.number="year" class="input !w-32" @change="load">
-        <option :value="year - 1">{{ year - 1 }}</option>
-        <option :value="year">{{ year }}</option>
-        <option :value="year + 1">{{ year + 1 }}</option>
-      </select>
+      <div class="flex items-center gap-2">
+        <label class="text-sm font-medium text-slate-700">Periode:</label>
+        <select v-model="year" class="input !w-44" @change="load">
+          <option value="ALL">Semua Periode</option>
+          <option v-for="y in AVAILABLE_YEARS" :key="y" :value="y">{{ y }}</option>
+        </select>
+      </div>
     </div>
 
     <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -120,7 +123,7 @@ onMounted(load)
 
     <div class="grid gap-4 lg:grid-cols-2">
       <div class="card p-5">
-        <h3 class="mb-4 text-sm font-semibold text-slate-800">Revenue Bulanan {{ year }}</h3>
+        <h3 class="mb-4 text-sm font-semibold text-slate-800">Revenue {{ year === 'ALL' ? '(Semua Periode)' : `Bulanan ${year}` }}</h3>
         <BaseChart v-if="data?.monthly_revenue?.length" :config="revenueChart" :height="280" />
         <p v-else-if="!loading" class="py-16 text-center text-sm text-slate-500">Belum ada data revenue</p>
       </div>

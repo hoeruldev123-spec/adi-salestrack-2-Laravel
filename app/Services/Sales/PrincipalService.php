@@ -15,6 +15,7 @@ class PrincipalService
                 $query->where('name', 'like', "%{$search}%");
             })
             ->when($filters['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when(isset($filters['is_active']), fn ($query) => $query->where('is_active', filter_var($filters['is_active'], FILTER_VALIDATE_BOOLEAN)))
             ->orderBy('name')
             ->paginate($filters['per_page'] ?? 15);
     }

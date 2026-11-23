@@ -17,6 +17,7 @@ class ActivityResource extends JsonResource
                 'name' => $this->user->name,
             ]),
             'type' => $this->type,
+            'activity_type' => $this->activity_type ?? $this->type,
             'subject' => $this->subject,
             'description' => $this->description,
             'activity_date' => $this->activity_date?->toISOString(),

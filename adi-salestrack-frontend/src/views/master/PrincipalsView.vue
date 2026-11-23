@@ -5,7 +5,6 @@ import { usePagination } from '@/composables/usePagination'
 import { useUiStore } from '@/stores/ui'
 import { useFormat } from '@/composables/useFormat'
 import { getApiErrorMessage, getFieldError } from '@/utils/form'
-import { ENTITY_STATUSES } from '@/constants'
 import BaseBadge from '@/components/common/BaseBadge.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import CrudTable from '@/components/common/CrudTable.vue'
@@ -27,7 +26,7 @@ const form = reactive({
   name: '',
   description: '',
   website: '',
-  status: 'ACTIVE',
+  is_active: true,
 })
 
 const columns: ColumnDef[] = [
@@ -41,13 +40,13 @@ const columns: ColumnDef[] = [
         ? h('a', { href: r.website as string, target: '_blank', class: 'text-primary-600 hover:underline' }, r.website as string)
         : '-',
   },
-  { key: 'status', label: 'Status', render: (r) => h(BaseBadge, { value: r.status as string }) },
+  { key: 'is_active', label: 'Status', render: (r) => h(BaseBadge, { value: (r.is_active ?? r.status === 'ACTIVE') ? 'ACTIVE' : 'INACTIVE' }) },
   { key: 'created_at', label: 'Dibuat', render: (r) => formatDate(r.created_at as string) },
 ]
 
 function openCreate() {
   editing.value = null
-  Object.assign(form, { name: '', description: '', website: '', status: 'ACTIVE' })
+  Object.assign(form, { name: '', description: '', website: '', is_active: true })
   Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
   modalOpen.value = true
 }
@@ -58,7 +57,7 @@ function openEdit(row: Record<string, unknown>) {
     name: row.name ?? '',
     description: row.description ?? '',
     website: row.website ?? '',
-    status: row.status ?? 'ACTIVE',
+    is_active: Boolean(row.is_active ?? row.status === 'ACTIVE'),
   })
   Object.keys(fieldErrors).forEach((k) => delete fieldErrors[k])
   modalOpen.value = true
@@ -78,7 +77,7 @@ async function save() {
     modalOpen.value = false
     page.load()
   } catch (e) {
-    for (const f of ['name', 'description', 'website', 'status']) {
+    for (const f of ['name', 'description', 'website', 'is_active']) {
       const msg = getFieldError(e, f)
       if (msg) fieldErrors[f] = msg
     }
@@ -147,11 +146,11 @@ onMounted(() => page.load())
             <input v-model="form.website" class="input" placeholder="https://..." />
             <p v-if="fieldErrors.website" class="mt-1 text-xs text-red-600">{{ fieldErrors.website }}</p>
           </div>
-          <div>
-            <label class="label">Status</label>
-            <select v-model="form.status" class="input">
-              <option v-for="s in ENTITY_STATUSES" :key="s" :value="s">{{ s }}</option>
-            </select>
+          <div class="flex items-end pb-2">
+            <label class="flex items-center gap-2 text-sm text-slate-700">
+              <input v-model="form.is_active" type="checkbox" class="h-4 w-4 rounded border-slate-300" />
+              Principal aktif
+            </label>
           </div>
         </div>
         <div class="flex justify-end gap-2 pt-2">

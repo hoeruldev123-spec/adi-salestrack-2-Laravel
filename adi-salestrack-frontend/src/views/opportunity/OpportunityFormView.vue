@@ -7,6 +7,7 @@ import { usersApi, type User } from '@/api/users'
 import { principalsApi, type Principal } from '@/api/principals'
 import { productsApi, type Product } from '@/api/products'
 import { useUiStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
 import { useFormat } from '@/composables/useFormat'
 import { getApiErrorMessage, getFieldError } from '@/utils/form'
 import {
@@ -19,6 +20,7 @@ import { Plus, Trash2 } from 'lucide-vue-next'
 const route = useRoute()
 const router = useRouter()
 const ui = useUiStore()
+const auth = useAuthStore()
 const { formatRupiah } = useFormat()
 
 const isEdit = computed(() => !!route.params.id)
@@ -38,12 +40,20 @@ const form = reactive({
   sales_id: null as number | null,
   principal_id: null as number | null,
   title: '',
+  project_name: '',
+  client_name: '',
   description: '',
   value: 0,
   stage: 'LEAD',
+  progress: 'LEAD',
   probability: STAGE_PROBABILITY.LEAD,
   expected_close_date: '',
+  closing_date: '',
+  sa_pic: '',
+  license_type: 'New',
+  deal_registration: '',
   source: 'OTHER',
+  remarks: '',
   items: [] as OpportunityItem[],
 })
 
@@ -51,6 +61,14 @@ const autoValue = computed(() => form.items.reduce((sum, i) => sum + (i.subtotal
 
 function onStageChange() {
   form.probability = STAGE_PROBABILITY[form.stage] ?? form.probability
+  form.progress = form.stage
+}
+
+function onCompanyChange() {
+  const comp = companies.value.find((c) => c.id === form.company_id)
+  if (comp) {
+    form.client_name = comp.name
+  }
 }
 
 function addItem() {
@@ -77,15 +95,23 @@ async function loadForEdit() {
     const op = await opportunitiesApi.get(opportunityId.value)
     Object.assign(form, {
       company_id: op.company_id,
-      sales_id: op.sales_id,
+      sales_id: op.sales_id ?? (op as Record<string, unknown>).user_id,
       principal_id: op.principal_id,
-      title: op.title,
+      title: op.title || (op as Record<string, unknown>).project_name || '',
+      project_name: (op as Record<string, unknown>).project_name || op.title || '',
+      client_name: (op as Record<string, unknown>).client_name || op.company?.name || '',
       description: op.description ?? '',
       value: op.value,
       stage: op.stage,
+      progress: (op as Record<string, unknown>).progress || op.stage,
       probability: op.probability,
       expected_close_date: op.expected_close_date ? String(op.expected_close_date).slice(0, 10) : '',
+      closing_date: (op as Record<string, unknown>).closing_date ? String((op as Record<string, unknown>).closing_date).slice(0, 10) : '',
+      sa_pic: (op as Record<string, unknown>).sa_pic || '',
+      license_type: (op as Record<string, unknown>).license_type || 'New',
+      deal_registration: (op as Record<string, unknown>).deal_registration || '',
       source: op.source ?? 'OTHER',
+      remarks: (op as Record<string, unknown>).remarks || '',
       items: (op.items ?? []).map((i) => ({ ...i })),
     })
   } catch (e) {
@@ -102,10 +128,15 @@ async function save() {
   try {
     const payload = {
       ...form,
+      title: form.title || form.project_name,
+      project_name: form.project_name || form.title,
+      client_name: form.client_name,
       value: form.items.length ? autoValue.value : form.value,
-      expected_close_date: form.expected_close_date || null,
+      estimated_value: form.items.length ? autoValue.value : form.value,
+      expected_close_date: form.expected_close_date || form.closing_date || null,
+      closing_date: form.closing_date || form.expected_close_date || null,
       company_id: form.company_id || null,
-      sales_id: form.sales_id || null,
+      sales_id: form.sales_id || (auth.isSales ? auth.user?.id : null),
       principal_id: form.principal_id || null,
     }
     if (isEdit.value) {
@@ -117,7 +148,7 @@ async function save() {
     }
     router.push(isEdit.value ? `/opportunities/${opportunityId.value}` : '/opportunities')
   } catch (e) {
-    for (const f of ['title', 'company_id', 'sales_id', 'value', 'stage', 'expected_close_date']) {
+    for (const f of ['title', 'project_name', 'company_id', 'client_name', 'sales_id', 'value', 'stage', 'expected_close_date']) {
       const msg = getFieldError(e, f)
       if (msg) fieldErrors[f] = msg
     }
@@ -130,16 +161,23 @@ async function save() {
 }
 
 onMounted(async () => {
-  const [compRes, userRes, prinRes, prodRes] = await Promise.all([
-    companiesApi.list({ per_page: 100 }),
-    usersApi.list({ per_page: 100 }),
-    principalsApi.list({ per_page: 100 }),
-    productsApi.list({ per_page: 100 }),
-  ])
-  companies.value = compRes.data
-  users.value = userRes.data
-  principals.value = prinRes.data
-  products.value = prodRes.data
+  const promises: Promise<unknown>[] = [
+    companiesApi.list({ per_page: 100 }).then((r) => (companies.value = r.data)).catch(() => []),
+    principalsApi.list({ per_page: 100 }).then((r) => (principals.value = r.data)).catch(() => []),
+    productsApi.list({ per_page: 100 }).then((r) => (products.value = r.data)).catch(() => []),
+  ]
+
+  if (auth.isAdmin || auth.isSalesManager) {
+    promises.push(
+      usersApi.list({ per_page: 100 }).then((r) => (users.value = r.data)).catch(() => [])
+    )
+  } else if (auth.user) {
+    users.value = [auth.user as unknown as User]
+    form.sales_id = auth.user.id
+  }
+
+  await Promise.all(promises)
+
   if (isEdit.value) await loadForEdit()
   else addItem()
 })
@@ -161,7 +199,7 @@ onMounted(async () => {
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
               <label class="label">Company *</label>
-              <select v-model="form.company_id" class="input">
+              <select v-model="form.company_id" class="input" @change="onCompanyChange">
                 <option :value="null">Pilih company</option>
                 <option v-for="c in companies" :key="c.id" :value="c.id">{{ c.name }}</option>
               </select>
@@ -195,7 +233,31 @@ onMounted(async () => {
 
           <div>
             <label class="label">Deskripsi</label>
-            <textarea v-model="form.description" class="input" rows="3" placeholder="Deskripsi opportunity" />
+            <textarea v-model="form.description" class="input" rows="2" placeholder="Deskripsi opportunity" />
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-3">
+            <div>
+              <label class="label">Solution Architect (SA PIC)</label>
+              <input v-model="form.sa_pic" class="input" placeholder="Nama SA PIC" />
+            </div>
+            <div>
+              <label class="label">Tipe Lisensi</label>
+              <select v-model="form.license_type" class="input">
+                <option value="New">New</option>
+                <option value="Renewal">Renewal</option>
+                <option value="Expansion">Expansion</option>
+              </select>
+            </div>
+            <div>
+              <label class="label">Deal Registration</label>
+              <input v-model="form.deal_registration" class="input" placeholder="No. Registrasi Deal" />
+            </div>
+          </div>
+
+          <div>
+            <label class="label">Catatan / Remarks</label>
+            <textarea v-model="form.remarks" class="input" rows="2" placeholder="Catatan progress atau remark" />
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2">

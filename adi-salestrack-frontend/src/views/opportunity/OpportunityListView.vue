@@ -5,12 +5,13 @@ import { opportunitiesApi } from '@/api/opportunities'
 import { companiesApi, type Company } from '@/api/companies'
 import { usersApi, type User } from '@/api/users'
 import { principalsApi, type Principal } from '@/api/principals'
+import { productCategoriesApi, type ProductCategory } from '@/api/productCategories'
 import { usePagination } from '@/composables/usePagination'
 import { useUiStore } from '@/stores/ui'
 import { useFormat } from '@/composables/useFormat'
 import { useAuthStore } from '@/stores/auth'
 import { getApiErrorMessage } from '@/utils/form'
-import { OPPORTUNITY_STAGES, OPPORTUNITY_STATUSES } from '@/constants'
+import { OPPORTUNITY_STAGES, OPPORTUNITY_STATUSES, AVAILABLE_YEARS } from '@/constants'
 import BaseBadge from '@/components/common/BaseBadge.vue'
 import CrudTable from '@/components/common/CrudTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -22,12 +23,21 @@ const ui = useUiStore()
 const auth = useAuthStore()
 const { formatRupiah, formatPercent, formatDate } = useFormat()
 
-const page = usePagination((params) => opportunitiesApi.list({ ...filters, ...params }))
-const filters = ref<Record<string, unknown>>({})
+const filters = ref<Record<string, unknown>>({
+  stage: undefined,
+  status: undefined,
+  sales_id: undefined,
+  principal_id: undefined,
+  year: undefined,
+  category_id: undefined,
+})
+
+const page = usePagination((params) => opportunitiesApi.list({ ...filters.value, ...params }))
 
 const companies = ref<Company[]>([])
 const users = ref<User[]>([])
 const principals = ref<Principal[]>([])
+const categories = ref<ProductCategory[]>([])
 
 const columns: ColumnDef[] = [
   {
@@ -38,27 +48,32 @@ const columns: ColumnDef[] = [
         'div',
         { class: 'flex flex-col' },
         [
-          h('span', { class: 'font-medium text-slate-800' }, r.title as string),
-          h('span', { class: 'text-xs text-slate-500' }, (r.company as { name?: string })?.name || '-'),
+          h('span', { class: 'font-medium text-slate-800' }, (r.title as string) || (r.project_name as string) || '-'),
+          h('span', { class: 'text-xs text-slate-500' }, (r.company as { name?: string })?.name || (r.client_name as string) || '-'),
         ],
       ),
   },
-  { key: 'stage', label: 'Stage', render: (r) => h(BaseBadge, { value: r.stage as string }) },
+  {
+    key: 'principal',
+    label: 'Principal',
+    render: (r) => (r.principal as { name?: string })?.name || '-',
+  },
+  { key: 'stage', label: 'Stage', render: (r) => h(BaseBadge, { value: (r.stage as string) || (r.progress as string) || '-' }) },
   {
     key: 'probability',
     label: 'Prob.',
     render: (r) => formatPercent(r.probability as number, 0),
   },
-  { key: 'value', label: 'Nilai', align: 'right', render: (r) => formatRupiah(r.value as number) },
+  { key: 'value', label: 'Nilai', align: 'right', render: (r) => formatRupiah((r.value as number) || (r.estimated_value as number) || 0) },
   {
     key: 'sales',
     label: 'Sales',
-    render: (r) => (r.sales as { name?: string })?.name || '-',
+    render: (r) => (r.sales as { name?: string })?.name || (r.user as { name?: string })?.name || '-',
   },
   {
     key: 'expected_close_date',
-    label: 'Expected Close',
-    render: (r) => formatDate(r.expected_close_date as string),
+    label: 'Closing Date',
+    render: (r) => formatDate((r.closing_date as string) || (r.expected_close_date as string)),
   },
   { key: 'status', label: 'Status', render: (r) => h(BaseBadge, { value: r.status as string }) },
 ]
@@ -85,35 +100,55 @@ async function remove(row: Record<string, unknown>) {
   }
 }
 
-watch(filters, () => page.load(), { deep: true })
+watch(
+  filters,
+  () => {
+    if (page.currentPage !== 1) {
+      page.currentPage = 1
+    } else {
+      page.load()
+    }
+  },
+  { deep: true },
+)
 
 onMounted(async () => {
   page.load()
-  companies.value = await companiesApi.list({ per_page: 100 }).then((r) => r.data)
-  users.value = await usersApi.list({ per_page: 100 }).then((r) => r.data)
-  principals.value = await principalsApi.list({ per_page: 100 }).then((r) => r.data)
+  companies.value = await companiesApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
+  if (auth.isAdmin || auth.isSalesManager || auth.isManagement) {
+    users.value = await usersApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
+  }
+  principals.value = await principalsApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
+  categories.value = await productCategoriesApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
 })
 </script>
 
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-end gap-3">
-      <SearchInput v-model="page.search" class="w-full max-w-xs" placeholder="Cari judul..." @search="page.load()" />
+      <SearchInput v-model="page.search" class="w-full max-w-xs" placeholder="Cari judul/klien..." @search="page.load()" />
+      <div>
+        <label class="label">Tahun</label>
+        <select v-model="filters.year" class="input !w-36">
+          <option :value="undefined">Semua Periode</option>
+          <option v-for="y in AVAILABLE_YEARS" :key="y" :value="y">{{ y }}</option>
+        </select>
+      </div>
       <div>
         <label class="label">Stage</label>
-        <select v-model="filters.stage" class="input !w-44">
+        <select v-model="filters.stage" class="input !w-40">
           <option :value="undefined">Semua Stage</option>
           <option v-for="s in OPPORTUNITY_STAGES" :key="s" :value="s">{{ s }}</option>
         </select>
       </div>
       <div>
         <label class="label">Status</label>
-        <select v-model="filters.status" class="input !w-40">
+        <select v-model="filters.status" class="input !w-36">
           <option :value="undefined">Semua Status</option>
           <option v-for="s in OPPORTUNITY_STATUSES" :key="s" :value="s">{{ s }}</option>
         </select>
       </div>
-      <div>
+      <div v-if="auth.isAdmin || auth.isSalesManager || auth.isManagement">
         <label class="label">Sales</label>
         <select v-model="filters.sales_id" class="input !w-44">
           <option :value="undefined">Semua Sales</option>
@@ -122,14 +157,21 @@ onMounted(async () => {
       </div>
       <div>
         <label class="label">Principal</label>
-        <select v-model="filters.principal_id" class="input !w-44">
+        <select v-model="filters.principal_id" class="input !w-40">
           <option :value="undefined">Semua Principal</option>
           <option v-for="p in principals" :key="p.id" :value="p.id">{{ p.name }}</option>
         </select>
       </div>
+      <div>
+        <label class="label">Kategori</label>
+        <select v-model="filters.category_id" class="input !w-44">
+          <option :value="undefined">Semua Kategori</option>
+          <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
+      </div>
       <button
         v-if="auth.isAdmin || auth.isSales || auth.isSalesManager"
-        class="btn-primary"
+        class="btn-primary ml-auto"
         @click="router.push('/opportunities/new')"
       >
         + Buat Opportunity

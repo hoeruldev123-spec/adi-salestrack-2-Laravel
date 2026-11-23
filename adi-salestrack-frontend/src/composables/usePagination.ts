@@ -56,5 +56,5 @@ export function usePagination<T>(fetcher: (params: Record<string, unknown>) => P
     () => load(),
   )
 
-  return { ...state, load, go }
+  return Object.assign(state, { load, go })
 }

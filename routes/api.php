@@ -10,9 +10,13 @@ use App\Http\Controllers\Api\V1\ForecastEvaluationController;
 use App\Http\Controllers\Api\V1\ForecastRunController;
 use App\Http\Controllers\Api\V1\MasterPrincipalController;
 use App\Http\Controllers\Api\V1\OpportunityController;
+use App\Http\Controllers\Api\V1\PriceListController;
+use App\Http\Controllers\Api\V1\ProductCategoryController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\ProductSpecificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\RankingController;
+use App\Http\Controllers\Api\V1\RecommendationController;
 use App\Http\Controllers\Api\V1\RevenueReportController;
 use App\Http\Controllers\Api\V1\RoleController;
 use App\Http\Controllers\Api\V1\SalesPerformanceController;
@@ -39,10 +43,20 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('users', UserController::class);
         Route::apiResource('companies', CompanyController::class);
         Route::apiResource('principals', MasterPrincipalController::class);
+        Route::apiResource('product-categories', ProductCategoryController::class)->parameters([
+            'product-categories' => 'product_category',
+        ]);
         Route::apiResource('products', ProductController::class);
+        Route::get('products/{product}/specifications', [ProductSpecificationController::class, 'index']);
+        Route::post('products/{product}/specifications', [ProductSpecificationController::class, 'store']);
+        Route::put('product-specifications/{specification}', [ProductSpecificationController::class, 'update']);
+        Route::delete('product-specifications/{specification}', [ProductSpecificationController::class, 'destroy']);
+        Route::apiResource('price-lists', PriceListController::class)->parameters([
+            'price-lists' => 'price_list',
+        ]);
 
         Route::prefix('dashboard')->group(function () {
-            Route::get('sales', [DashboardController::class, 'sales'])->middleware('role:SALES');
+            Route::get('sales', [DashboardController::class, 'sales'])->middleware('role:SALES,ADMIN');
             Route::get('manager', [DashboardController::class, 'manager'])->middleware('role:SALES_MANAGER,ADMIN');
             Route::get('bod', [DashboardController::class, 'bod'])->middleware('role:MANAGEMENT,ADMIN');
         });
@@ -83,6 +97,7 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('opportunities', OpportunityController::class);
         Route::get('opportunities/{opportunity}/items', [OpportunityController::class, 'items']);
+        Route::post('opportunities/{opportunity}/items', [OpportunityController::class, 'addItem']);
         Route::get('opportunities/{opportunity}/logs', [OpportunityController::class, 'logs']);
         Route::apiResource('opportunities.activities', ActivityController::class)->scoped();
         Route::apiResource('activities', ActivityController::class)->except(['store', 'index']);
@@ -92,7 +107,7 @@ Route::prefix('v1')->group(function () {
         ]);
         Route::get('transactions/{transaction}/items', [SalesTransactionController::class, 'items']);
 
-        Route::prefix('analytics')->middleware('role:ADMIN,SALES_MANAGER,MANAGEMENT')->group(function () {
+        Route::prefix('analytics')->middleware('role:ADMIN,SALES_MANAGER,MANAGEMENT,SALES')->group(function () {
             Route::get('dashboard', [AnalyticsController::class, 'dashboard']);
             Route::get('revenue', [AnalyticsController::class, 'revenue']);
             Route::get('pipeline', [AnalyticsController::class, 'pipeline']);
@@ -102,6 +117,26 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('forecast-runs', ForecastRunController::class)->only([
             'index', 'show', 'store', 'destroy',
         ]);
+
+        Route::middleware('role:ADMIN,SALES_MANAGER,MANAGEMENT')->group(function () {
+            Route::get('forecasting/configuration', [ForecastRunController::class, 'configuration'])
+                ->middleware('role:ADMIN,SALES_MANAGER');
+            Route::get('forecasting', [ForecastRunController::class, 'index']);
+            Route::get('forecasting/{forecast_run}', [ForecastRunController::class, 'show']);
+            Route::get('forecasting/{forecast_run}/results', [ForecastRunController::class, 'results']);
+            Route::get('forecasting/{forecast_run}/distribution', [ForecastRunController::class, 'distribution']);
+            Route::get('forecasting/{forecast_run}/principals', [ForecastRunController::class, 'principals']);
+            Route::get('forecasting/{forecast_run}/categories', [ForecastRunController::class, 'categories']);
+            Route::get('forecasting/{forecast_run}/evaluation', [ForecastRunController::class, 'evaluation']);
+            Route::get('forecasting/{forecast_run}/recommendations', [ForecastRunController::class, 'recommendations']);
+
+            Route::get('recommendations', [RecommendationController::class, 'index']);
+            Route::get('recommendations/{recommendation}', [RecommendationController::class, 'show']);
+
+            Route::post('forecasting/run', [ForecastRunController::class, 'store'])
+                ->middleware('role:ADMIN,SALES_MANAGER');
+        });
+
         Route::get('forecast-runs/{forecast_run}/results', [ForecastRunController::class, 'results']);
         Route::get('forecast-runs/{forecast_run}/scenarios', [ForecastRunController::class, 'scenarios']);
         Route::post('forecast-runs/{forecast_run}/scenarios', [ForecastRunController::class, 'storeScenario']);

@@ -51,6 +51,30 @@ const router = createRouter({
           meta: { title: 'Products', roles: ['ADMIN'], menu: 'master' },
         },
         {
+          path: 'product-categories',
+          name: 'product-categories',
+          component: () => import('@/views/master/ProductCategoriesView.vue'),
+          meta: { title: 'Kategori Produk', roles: ['ADMIN'], menu: 'master' },
+        },
+        {
+          path: 'product-specifications',
+          name: 'product-specifications',
+          component: () => import('@/views/master/ProductSpecificationsView.vue'),
+          meta: { title: 'Spesifikasi Produk', roles: ['ADMIN'], menu: 'master' },
+        },
+        {
+          path: 'price-lists',
+          name: 'price-lists',
+          component: () => import('@/views/master/PriceListsView.vue'),
+          meta: { title: 'Price List', roles: ['ADMIN'], menu: 'master' },
+        },
+        {
+          path: 'catalog',
+          name: 'catalog',
+          component: () => import('@/views/catalog/ProductCatalogView.vue'),
+          meta: { title: 'Katalog Produk', roles: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'], menu: 'catalog' },
+        },
+        {
           path: 'opportunities',
           name: 'opportunities',
           component: () => import('@/views/opportunity/OpportunityListView.vue'),
@@ -90,7 +114,7 @@ const router = createRouter({
           path: 'analytics',
           name: 'analytics',
           component: () => import('@/views/analytics/AnalyticsView.vue'),
-          meta: { title: 'Analytics', roles: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'], menu: 'analytics' },
+          meta: { title: 'Analytics', roles: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT', 'SALES'], menu: 'analytics' },
         },
         {
           path: 'forecasts',
@@ -121,6 +145,18 @@ const router = createRouter({
           name: 'forecast-evaluation',
           component: () => import('@/views/forecast/ForecastEvaluationView.vue'),
           meta: { title: 'Evaluasi Forecast', roles: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'], menu: 'forecast' },
+        },
+        {
+          path: 'simulation-results',
+          name: 'simulation-results',
+          component: () => import('@/views/forecast/SimulationResultsView.vue'),
+          meta: { title: 'Hasil Simulasi Monte Carlo', roles: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'], menu: 'simulation_results' },
+        },
+        {
+          path: 'recommendations',
+          name: 'recommendations',
+          component: () => import('@/views/forecast/RecommendationsView.vue'),
+          meta: { title: 'Rekomendasi', roles: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'], menu: 'recommendations' },
         },
       ],
     },

@@ -23,7 +23,7 @@ class OpportunityController extends Controller
     public function index(Request $request)
     {
         $opportunities = $this->opportunityService->paginate(
-            $request->only(['status', 'stage', 'company_id', 'principal_id', 'user_id', 'search', 'per_page']),
+            $request->only(['status', 'stage', 'progress', 'license_type', 'company_id', 'principal_id', 'user_id', 'sales_id', 'year', 'category', 'category_id', 'search', 'per_page']),
             $request->user()
         );
 
@@ -37,7 +37,7 @@ class OpportunityController extends Controller
     {
         return ApiResponse::success(
             new OpportunityResource(
-                $opportunity->load(['company', 'user', 'principal', 'items.product'])
+                $opportunity->load(['company', 'user', 'principal', 'items.product', 'items.priceList'])
             ),
             'Opportunity retrieved successfully'
         );
@@ -49,7 +49,7 @@ class OpportunityController extends Controller
 
         return ApiResponse::created(
             new OpportunityResource(
-                $opportunity->load(['company', 'user', 'principal', 'items.product'])
+                $opportunity->load(['company', 'user', 'principal', 'items.product', 'items.priceList'])
             ),
             'Opportunity created successfully'
         );
@@ -61,7 +61,7 @@ class OpportunityController extends Controller
 
         return ApiResponse::success(
             new OpportunityResource(
-                $opportunity->load(['company', 'user', 'principal', 'items.product'])
+                $opportunity->load(['company', 'user', 'principal', 'items.product', 'items.priceList'])
             ),
             'Opportunity updated successfully'
         );
@@ -79,8 +79,29 @@ class OpportunityController extends Controller
         $this->authorize('view', $opportunity);
 
         return ApiResponse::success(
-            OpportunityItemResource::collection($opportunity->items()->with('product')->get()),
+            OpportunityItemResource::collection($opportunity->items()->with(['product', 'priceList'])->get()),
             'Opportunity items retrieved successfully'
+        );
+    }
+
+    public function addItem(Request $request, Opportunity $opportunity)
+    {
+        $this->authorize('update', $opportunity);
+
+        $validated = $request->validate([
+            'product_id' => ['required', 'integer', 'exists:products,id'],
+            'price_list_id' => ['nullable', 'integer', 'exists:price_lists,id'],
+            'item_description' => ['nullable', 'string', 'max:255'],
+            'quantity' => ['required', 'numeric', 'min:0.01'],
+            'unit_price' => ['nullable', 'numeric', 'min:0'],
+            'discount' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        $item = $this->opportunityService->addItem($opportunity, $validated, $request->user());
+
+        return ApiResponse::created(
+            new OpportunityItemResource($item),
+            'Opportunity item added successfully'
         );
     }
 

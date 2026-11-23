@@ -6,33 +6,54 @@ use App\Enums\OpportunityStatus;
 use App\Enums\TransactionStatus;
 use App\Models\Opportunity;
 use App\Models\SalesTransaction;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class AnalyticsService
 {
-    public function dashboard(?string $year = null): array
+    public function dashboard(?string $year = null, ?User $authUser = null): array
     {
-        $year = $year ?? (string) now()->year;
-        $from = "{$year}-01-01";
-        $to = "{$year}-12-31";
+        $year = $year ?: 'ALL';
+        $isAll = strtoupper((string) $year) === 'ALL';
+        $from = $isAll ? null : "{$year}-01-01";
+        $to = $isAll ? null : "{$year}-12-31";
+
+        $isSales = $authUser && ($authUser->role?->name === 'SALES' || $authUser->role_id === 2);
 
         $paidTransactions = SalesTransaction::query()
             ->where('status', TransactionStatus::PAID->value)
-            ->whereBetween('transaction_date', [$from, $to]);
+            ->when(! $isAll, fn ($q) => $q->whereBetween('transaction_date', [$from, $to]))
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
 
         $totalRevenue = (float) (clone $paidTransactions)->sum('total_amount');
 
-        $openOpportunities = Opportunity::where('status', OpportunityStatus::OPEN->value);
+        $openOpportunities = Opportunity::where('status', OpportunityStatus::OPEN->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
         $totalPipeline = (float) (clone $openOpportunities)->sum('value');
 
-        $wonOpportunities = Opportunity::where('status', OpportunityStatus::WON->value);
+        $wonOpportunities = Opportunity::where('status', OpportunityStatus::WON->value)
+            ->when(! $isAll, function ($q) use ($year) {
+                $q->where(function ($sub) use ($year) {
+                    $sub->whereYear('closing_date', $year)
+                        ->orWhere(fn ($q2) => $q2->whereNull('closing_date')->whereYear('expected_close_date', $year));
+                });
+            })
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
         $wonRevenue = (float) (clone $wonOpportunities)->sum('value');
 
         $totalClosed = Opportunity::whereIn('status', [
             OpportunityStatus::WON->value,
             OpportunityStatus::LOST->value,
-        ])->count();
+        ])
+            ->when(! $isAll, function ($q) use ($year) {
+                $q->where(function ($sub) use ($year) {
+                    $sub->whereYear('closing_date', $year)
+                        ->orWhere(fn ($q2) => $q2->whereNull('closing_date')->whereYear('expected_close_date', $year));
+                });
+            })
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id))
+            ->count();
         $wonCount = (clone $wonOpportunities)->count();
         $winRate = $totalClosed > 0 ? round(($wonCount / $totalClosed) * 100, 2) : 0;
 
@@ -40,6 +61,13 @@ class AnalyticsService
         $averageDealSize = $wonTransactions > 0
             ? round($totalRevenue / $wonTransactions, 2)
             : 0;
+
+        $latestForecast = \App\Models\ForecastRun::where('status', 'COMPLETED')
+            ->whereHas('result', fn ($q) => $q->where('mean', '>', 0))
+            ->latest('id')
+            ->first();
+        $forecastRevenue = $latestForecast?->result?->mean ? (float) $latestForecast->result->mean : null;
+        $targetProbability = $latestForecast?->result?->target_probability ? (float) $latestForecast->result->target_probability : null;
 
         return [
             'year' => $year,
@@ -51,33 +79,60 @@ class AnalyticsService
             'open_opportunities' => (clone $openOpportunities)->count(),
             'won_opportunities' => $wonCount,
             'transaction_count' => $wonTransactions,
+            'forecast_revenue' => $forecastRevenue,
+            'target_probability' => $targetProbability,
         ];
     }
 
-    public function revenue(array $filters = []): array
+    public function revenue(array $filters = [], ?User $authUser = null): array
     {
-        $year = $filters['year'] ?? (string) now()->year;
-        $from = $filters['from'] ?? "{$year}-01-01";
-        $to = $filters['to'] ?? "{$year}-12-31";
+        $year = $filters['year'] ?? 'ALL';
+        $isAll = strtoupper((string) $year) === 'ALL';
+        $from = $filters['from'] ?? ($isAll ? null : "{$year}-01-01");
+        $to = $filters['to'] ?? ($isAll ? null : "{$year}-12-31");
+
+        $isSales = $authUser && ($authUser->role?->name === 'SALES' || $authUser->role_id === 2);
 
         $base = SalesTransaction::query()
             ->where('status', TransactionStatus::PAID->value)
-            ->whereBetween('transaction_date', [$from, $to]);
-
-        $monthly = (clone $base)
-            ->selectRaw('DATE_FORMAT(transaction_date, "%Y-%m") as period, SUM(total_amount) as total')
-            ->groupBy('period')
-            ->orderBy('period')
-            ->pluck('total', 'period')
-            ->map(fn ($v) => (float) $v);
+            ->when(! $isAll && $from && $to, fn ($q) => $q->whereBetween('transaction_date', [$from, $to]))
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
 
         $periods = [];
-        $cursor = Carbon::parse($from)->startOfMonth();
-        $end = Carbon::parse($to)->startOfMonth();
-        while ($cursor <= $end) {
-            $key = $cursor->format('Y-m');
-            $periods[$key] = $monthly[$key] ?? 0.0;
-            $cursor->addMonth();
+        if ($isAll) {
+            $monthly = (clone $base)
+                ->selectRaw('DATE_FORMAT(transaction_date, "%Y-%m") as period, SUM(total_amount) as total')
+                ->groupBy('period')
+                ->orderBy('period')
+                ->pluck('total', 'period')
+                ->map(fn ($v) => (float) $v);
+
+            $earliest = (clone $base)->min('transaction_date') ?: '2020-01-01';
+            $latest = (clone $base)->max('transaction_date') ?: '2025-12-31';
+            $cursor = Carbon::parse($earliest)->startOfMonth();
+            $end = Carbon::parse($latest)->startOfMonth();
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y-m');
+                $periods[$key] = $monthly[$key] ?? 0.0;
+                $cursor->addMonth();
+            }
+            $from = Carbon::parse($earliest)->toDateString();
+            $to = Carbon::parse($latest)->toDateString();
+        } else {
+            $monthly = (clone $base)
+                ->selectRaw('DATE_FORMAT(transaction_date, "%Y-%m") as period, SUM(total_amount) as total')
+                ->groupBy('period')
+                ->orderBy('period')
+                ->pluck('total', 'period')
+                ->map(fn ($v) => (float) $v);
+
+            $cursor = Carbon::parse($from)->startOfMonth();
+            $end = Carbon::parse($to)->startOfMonth();
+            while ($cursor <= $end) {
+                $key = $cursor->format('Y-m');
+                $periods[$key] = $monthly[$key] ?? 0.0;
+                $cursor->addMonth();
+            }
         }
 
         return [
@@ -85,20 +140,43 @@ class AnalyticsService
             'to' => $to,
             'total' => (float) (clone $base)->sum('total_amount'),
             'monthly' => $periods,
-            'by_principal' => $this->revenueByPrincipal($from, $to),
+            'by_principal' => $this->revenueByPrincipal($isAll ? null : $from, $isAll ? null : $to, $isSales ? $authUser->id : null),
             'by_customer' => $this->revenueByCustomer($base),
-            'by_product' => $this->revenueByProduct($from, $to),
+            'by_product' => $this->revenueByProduct($isAll ? null : $from, $isAll ? null : $to, $isSales ? $authUser->id : null),
             'by_salesperson' => $this->revenueBySalesperson($base),
         ];
     }
 
-    public function pipeline(): array
+    public function pipeline(?User $authUser = null, ?string $year = null): array
     {
-        $open = Opportunity::where('status', OpportunityStatus::OPEN->value);
-        $won = Opportunity::where('status', OpportunityStatus::WON->value);
-        $lost = Opportunity::where('status', OpportunityStatus::LOST->value);
-        $cancelled = Opportunity::where('status', OpportunityStatus::CANCELLED->value);
-        $onHold = Opportunity::where('status', OpportunityStatus::ON_HOLD->value);
+        $isSales = $authUser && ($authUser->role?->name === 'SALES' || $authUser->role_id === 2);
+        $isAll = ! $year || strtoupper((string) $year) === 'ALL';
+
+        $open = Opportunity::where('status', OpportunityStatus::OPEN->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+        $won = Opportunity::where('status', OpportunityStatus::WON->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+        $lost = Opportunity::where('status', OpportunityStatus::LOST->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+        $cancelled = Opportunity::where('status', OpportunityStatus::CANCELLED->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+        $onHold = Opportunity::where('status', OpportunityStatus::ON_HOLD->value)
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+
+        if (! $isAll) {
+            $yearFilter = function ($q) use ($year) {
+                $q->where(function ($sub) use ($year) {
+                    $sub->whereYear('closing_date', $year)
+                        ->orWhere(fn ($q2) => $q2->whereNull('closing_date')->whereYear('expected_close_date', $year))
+                        ->orWhere(fn ($q3) => $q3->whereNull('closing_date')->whereNull('expected_close_date')->whereYear('created_at', $year));
+                });
+            };
+            $open->where($yearFilter);
+            $won->where($yearFilter);
+            $lost->where($yearFilter);
+            $cancelled->where($yearFilter);
+            $onHold->where($yearFilter);
+        }
 
         $totalClosed = $won->count() + $lost->count();
 
@@ -116,15 +194,36 @@ class AnalyticsService
         ];
     }
 
-    public function performance(array $filters = []): array
+    public function performance(array $filters = [], ?User $authUser = null): array
     {
-        $year = $filters['year'] ?? (string) now()->year;
-        $from = $filters['from'] ?? "{$year}-01-01";
-        $to = $filters['to'] ?? "{$year}-12-31";
+        $year = $filters['year'] ?? 'ALL';
+        $isAll = strtoupper((string) $year) === 'ALL';
+        $from = $filters['from'] ?? ($isAll ? null : "{$year}-01-01");
+        $to = $filters['to'] ?? ($isAll ? null : "{$year}-12-31");
+
+        $isSales = $authUser && ($authUser->role?->name === 'SALES' || $authUser->role_id === 2);
 
         $transactions = SalesTransaction::query()
             ->where('status', TransactionStatus::PAID->value)
-            ->whereBetween('transaction_date', [$from, $to]);
+            ->when(! $isAll && $from && $to, fn ($q) => $q->whereBetween('transaction_date', [$from, $to]))
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id));
+
+        $oppsByUser = Opportunity::query()
+            ->when(! $isAll, function ($q) use ($year) {
+                $q->where(function ($sub) use ($year) {
+                    $sub->whereYear('closing_date', $year)
+                        ->orWhere(fn ($q2) => $q2->whereNull('closing_date')->whereYear('expected_close_date', $year));
+                });
+            })
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id))
+            ->select(
+                'user_id',
+                DB::raw('COUNT(*) as total_opps'),
+                DB::raw('SUM(CASE WHEN status = "WON" THEN 1 ELSE 0 END) as won_opps')
+            )
+            ->groupBy('user_id')
+            ->get()
+            ->keyBy('user_id');
 
         $bySalesperson = (clone $transactions)
             ->select('user_id', DB::raw('COUNT(*) as deals'), DB::raw('SUM(total_amount) as revenue'))
@@ -132,18 +231,29 @@ class AnalyticsService
             ->groupBy('user_id')
             ->orderByDesc('revenue')
             ->get()
-            ->map(fn ($row) => [
-                'user' => $row->user ? ['id' => $row->user->id, 'name' => $row->user->name] : null,
-                'deals' => $row->deals,
-                'revenue' => (float) $row->revenue,
-                'average_deal_size' => $row->deals > 0 ? round($row->revenue / $row->deals, 2) : 0,
-            ])->values();
+            ->map(function ($row) use ($oppsByUser) {
+                $oppStats = $oppsByUser->get($row->user_id);
+                $oppCount = $oppStats ? (int) $oppStats->total_opps : (int) $row->deals;
+                $wonCount = $oppStats ? (int) $oppStats->won_opps : (int) $row->deals;
+                $winRate = $oppCount > 0 ? round(($wonCount / $oppCount) * 100, 2) : 100.0;
+
+                return [
+                    'user' => $row->user ? ['id' => $row->user->id, 'name' => $row->user->name] : null,
+                    'deals' => $row->deals,
+                    'opportunities_count' => $oppCount,
+                    'win_count' => $wonCount,
+                    'win_rate' => $winRate,
+                    'revenue' => (float) $row->revenue,
+                    'average_deal_size' => $row->deals > 0 ? round($row->revenue / $row->deals, 2) : 0,
+                ];
+            })->values();
 
         $byProduct = DB::table('sales_transaction_items')
             ->join('sales_transactions', 'sales_transactions.id', '=', 'sales_transaction_items.sales_transaction_id')
             ->join('products', 'products.id', '=', 'sales_transaction_items.product_id')
             ->where('sales_transactions.status', TransactionStatus::PAID->value)
-            ->whereBetween('sales_transactions.transaction_date', [$from, $to])
+            ->when(! $isAll && $from && $to, fn ($q) => $q->whereBetween('sales_transactions.transaction_date', [$from, $to]))
+            ->when($isSales, fn ($q) => $q->where('sales_transactions.user_id', $authUser->id))
             ->select('products.id', 'products.name', DB::raw('SUM(sales_transaction_items.subtotal) as revenue'), DB::raw('SUM(sales_transaction_items.quantity) as quantity'))
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('revenue')
@@ -158,7 +268,15 @@ class AnalyticsService
         $closedOpportunities = Opportunity::whereIn('status', [
             OpportunityStatus::WON->value,
             OpportunityStatus::LOST->value,
-        ])->get(['created_at', 'updated_at']);
+        ])
+            ->when(! $isAll, function ($q) use ($year) {
+                $q->where(function ($sub) use ($year) {
+                    $sub->whereYear('closing_date', $year)
+                        ->orWhere(fn ($q2) => $q2->whereNull('closing_date')->whereYear('expected_close_date', $year));
+                });
+            })
+            ->when($isSales, fn ($q) => $q->where('user_id', $authUser->id))
+            ->get(['created_at', 'updated_at']);
 
         $totalDays = 0;
         $closedCount = 0;
@@ -171,21 +289,22 @@ class AnalyticsService
         return [
             'by_salesperson' => $bySalesperson,
             'by_product' => $byProduct,
-            'average_deal_size' => $this->averageDealSize($from, $to),
+            'average_deal_size' => $this->averageDealSize($isAll ? null : $from, $isAll ? null : $to, $isSales ? $authUser->id : null),
             'average_sales_cycle_days' => $closedCount > 0 ? round($totalDays / $closedCount, 1) : 0,
         ];
     }
 
-    private function revenueByPrincipal(string $from, string $to)
+    private function revenueByPrincipal(?string $from = null, ?string $to = null, ?int $salesUserId = null)
     {
         return DB::table('sales_transaction_items')
             ->join('sales_transactions', 'sales_transactions.id', '=', 'sales_transaction_items.sales_transaction_id')
             ->join('products', 'products.id', '=', 'sales_transaction_items.product_id')
-            ->join('master_principals', 'master_principals.id', '=', 'products.principal_id')
+            ->join('principals', 'principals.id', '=', 'products.principal_id')
             ->where('sales_transactions.status', TransactionStatus::PAID->value)
-            ->whereBetween('sales_transactions.transaction_date', [$from, $to])
-            ->select('master_principals.id', 'master_principals.name', DB::raw('SUM(sales_transaction_items.subtotal) as revenue'))
-            ->groupBy('master_principals.id', 'master_principals.name')
+            ->when($from && $to, fn ($q) => $q->whereBetween('sales_transactions.transaction_date', [$from, $to]))
+            ->when($salesUserId, fn ($q) => $q->where('sales_transactions.user_id', $salesUserId))
+            ->select('principals.id', 'principals.name', DB::raw('SUM(sales_transaction_items.subtotal) as revenue'))
+            ->groupBy('principals.id', 'principals.name')
             ->orderByDesc('revenue')
             ->get()
             ->map(fn ($row) => [
@@ -210,13 +329,14 @@ class AnalyticsService
             ->values();
     }
 
-    private function revenueByProduct(string $from, string $to)
+    private function revenueByProduct(?string $from = null, ?string $to = null, ?int $salesUserId = null)
     {
         return DB::table('sales_transaction_items')
             ->join('sales_transactions', 'sales_transactions.id', '=', 'sales_transaction_items.sales_transaction_id')
             ->join('products', 'products.id', '=', 'sales_transaction_items.product_id')
             ->where('sales_transactions.status', TransactionStatus::PAID->value)
-            ->whereBetween('sales_transactions.transaction_date', [$from, $to])
+            ->when($from && $to, fn ($q) => $q->whereBetween('sales_transactions.transaction_date', [$from, $to]))
+            ->when($salesUserId, fn ($q) => $q->where('sales_transactions.user_id', $salesUserId))
             ->select('products.id', 'products.name', DB::raw('SUM(sales_transaction_items.subtotal) as revenue'))
             ->groupBy('products.id', 'products.name')
             ->orderByDesc('revenue')
@@ -243,10 +363,11 @@ class AnalyticsService
             ->values();
     }
 
-    private function averageDealSize(string $from, string $to): float
+    private function averageDealSize(?string $from = null, ?string $to = null, ?int $salesUserId = null): float
     {
         $paid = SalesTransaction::where('status', TransactionStatus::PAID->value)
-            ->whereBetween('transaction_date', [$from, $to]);
+            ->when($from && $to, fn ($q) => $q->whereBetween('transaction_date', [$from, $to]))
+            ->when($salesUserId, fn ($q) => $q->where('user_id', $salesUserId));
 
         $count = (clone $paid)->count();
 

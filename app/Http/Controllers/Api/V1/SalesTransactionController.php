@@ -22,7 +22,7 @@ class SalesTransactionController extends Controller
     public function index(Request $request)
     {
         $transactions = $this->transactionService->paginate(
-            $request->only(['company_id', 'user_id', 'status', 'from', 'to', 'per_page']),
+            $request->only(['company_id', 'user_id', 'sales_id', 'principal_id', 'status', 'year', 'from', 'to', 'search', 'per_page']),
             $request->user()
         );
 

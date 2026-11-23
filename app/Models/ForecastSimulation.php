@@ -11,6 +11,15 @@ class ForecastSimulation extends Model
 {
     public const UPDATED_AT = null;
 
+    protected function casts(): array
+    {
+        return [
+            'simulation_number' => 'integer',
+            'total_revenue' => 'decimal:2',
+            'target_achieved' => 'boolean',
+        ];
+    }
+
     public function forecastRun(): BelongsTo
     {
         return $this->belongsTo(ForecastRun::class);

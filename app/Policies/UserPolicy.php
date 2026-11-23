@@ -14,9 +14,9 @@ class UserPolicy
         return $this->isAdmin($user) || $this->isManager($user);
     }
 
-    public function view(User $user): bool
+    public function view(User $user, ?User $model = null): bool
     {
-        return $this->isViewer($user);
+        return $this->isViewer($user) || ($model && $user->id === $model->id);
     }
 
     public function create(User $user): bool

@@ -22,12 +22,12 @@ class OpportunityPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $this->isAdmin($user) || $this->isManager($user) || $this->isSales($user);
     }
 
     public function update(User $user, Opportunity $opportunity): bool
     {
-        return $this->isViewer($user) || $opportunity->user_id === $user->id;
+        return $this->isAdmin($user) || $this->isManager($user) || $opportunity->user_id === $user->id;
     }
 
     public function delete(User $user, Opportunity $opportunity): bool

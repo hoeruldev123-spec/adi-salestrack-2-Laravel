@@ -3,6 +3,12 @@ import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import router from '@/router'
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    silent?: boolean
+  }
+}
+
 export interface ApiMeta {
   current_page?: number
   last_page?: number
@@ -36,6 +42,7 @@ http.interceptors.response.use(
   (error: AxiosError<ApiResponse>) => {
     const ui = useUiStore()
     const status = error.response?.status
+    const isSilent = (error.config as any)?.silent === true
 
     if (status === 401) {
       const auth = useAuthStore()
@@ -43,14 +50,16 @@ http.interceptors.response.use(
       if (router.currentRoute.value.name !== 'login') {
         router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
       }
-    } else if (status === 403) {
-      ui.notify('error', 'Anda tidak memiliki izin untuk melakukan aksi ini')
-    } else if (status === 429) {
-      ui.notify('error', 'Terlalu banyak permintaan. Silakan coba lagi nanti')
-    } else if (status && status >= 500) {
-      ui.notify('error', error.response?.data?.message || 'Terjadi kesalahan pada server')
-    } else if (!error.response) {
-      ui.notify('error', 'Tidak dapat terhubung ke server. Periksa koneksi Anda')
+    } else if (!isSilent) {
+      if (status === 403) {
+        ui.notify('error', 'Anda tidak memiliki izin untuk melakukan aksi ini')
+      } else if (status === 429) {
+        ui.notify('error', 'Terlalu banyak permintaan. Silakan coba lagi nanti')
+      } else if (status && status >= 500) {
+        ui.notify('error', error.response?.data?.message || 'Terjadi kesalahan pada server')
+      } else if (!error.response) {
+        ui.notify('error', 'Tidak dapat terhubung ke server. Periksa koneksi Anda')
+      }
     }
 
     return Promise.reject(error)

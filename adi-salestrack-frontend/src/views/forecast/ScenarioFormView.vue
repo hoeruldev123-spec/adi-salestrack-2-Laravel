@@ -58,7 +58,7 @@ async function save() {
 onMounted(async () => {
   try {
     const run = await forecastsApi.get(runId)
-    runName.value = run.name
+    runName.value = run.forecast_name || run.name
     form.target_revenue = run.target_revenue ?? null
   } catch (e) {
     ui.notify('error', getApiErrorMessage(e))

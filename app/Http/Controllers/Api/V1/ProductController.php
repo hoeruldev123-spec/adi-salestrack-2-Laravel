@@ -21,7 +21,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $products = $this->productService->paginate($request->only([
-            'search', 'type', 'principal_id', 'status', 'per_page',
+            'search', 'type', 'product_type', 'category_id', 'principal_id', 'status', 'is_active', 'per_page',
         ]));
 
         return ApiResponse::paginated(ProductResource::collection($products), 'Products retrieved successfully');
@@ -30,7 +30,7 @@ class ProductController extends Controller
     public function show(Product $product)
     {
         return ApiResponse::success(
-            new ProductResource($product->load('principal')),
+            new ProductResource($product->load(['principal', 'category', 'specifications', 'priceLists'])),
             'Product retrieved successfully'
         );
     }
@@ -40,7 +40,7 @@ class ProductController extends Controller
         $product = $this->productService->create($request->validated());
 
         return ApiResponse::created(
-            new ProductResource($product->load('principal')),
+            new ProductResource($product->load(['principal', 'category'])),
             'Product created successfully'
         );
     }

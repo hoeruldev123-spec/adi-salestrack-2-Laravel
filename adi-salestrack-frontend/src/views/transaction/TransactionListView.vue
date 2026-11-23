@@ -2,12 +2,14 @@
 import { h, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { transactionsApi, type SalesTransaction } from '@/api/transactions'
+import { usersApi, type User } from '@/api/users'
+import { principalsApi, type Principal } from '@/api/principals'
 import { usePagination } from '@/composables/usePagination'
 import { useUiStore } from '@/stores/ui'
 import { useFormat } from '@/composables/useFormat'
 import { useAuthStore } from '@/stores/auth'
 import { getApiErrorMessage } from '@/utils/form'
-import { TRANSACTION_STATUSES } from '@/constants'
+import { TRANSACTION_STATUSES, AVAILABLE_YEARS } from '@/constants'
 import BaseBadge from '@/components/common/BaseBadge.vue'
 import CrudTable from '@/components/common/CrudTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -20,8 +22,17 @@ const ui = useUiStore()
 const auth = useAuthStore()
 const { formatRupiah, formatDate } = useFormat()
 
-const filters = ref<Record<string, unknown>>({})
-const page = usePagination((params) => transactionsApi.list({ ...filters, ...params }))
+const filters = ref<Record<string, unknown>>({
+  year: undefined,
+  status: undefined,
+  sales_id: undefined,
+  principal_id: undefined,
+})
+
+const page = usePagination((params) => transactionsApi.list({ ...filters.value, ...params }))
+
+const users = ref<User[]>([])
+const principals = ref<Principal[]>([])
 
 const detailOpen = ref(false)
 const detail = ref<SalesTransaction | null>(null)
@@ -32,7 +43,27 @@ const columns: ColumnDef[] = [
   {
     key: 'opportunity',
     label: 'Opportunity',
-    render: (r) => (r.opportunity as { title?: string })?.title || '-',
+    render: (r) =>
+      h(
+        'div',
+        { class: 'flex flex-col' },
+        [
+          h('span', { class: 'font-medium text-slate-800' }, (r.opportunity as { title?: string })?.title || '-'),
+          h('span', { class: 'text-xs text-slate-500' }, (r.company as { name?: string })?.name || '-'),
+        ],
+      ),
+  },
+  {
+    key: 'principal',
+    label: 'Principal',
+    render: (r) =>
+      ((r.opportunity as { principal?: { name?: string } })?.principal?.name) || '-',
+  },
+  {
+    key: 'sales',
+    label: 'Sales',
+    render: (r) =>
+      (r.sales as { name?: string })?.name || (r.user as { name?: string })?.name || '-',
   },
   { key: 'transaction_date', label: 'Tanggal', render: (r) => formatDate(r.transaction_date as string) },
   { key: 'status', label: 'Status', render: (r) => h(BaseBadge, { value: r.status as string }) },
@@ -57,15 +88,38 @@ async function remove(row: Record<string, unknown>) {
   }
 }
 
-watch(filters, () => page.load(), { deep: true })
+watch(
+  filters,
+  () => {
+    if (page.currentPage !== 1) {
+      page.currentPage = 1
+    } else {
+      page.load()
+    }
+  },
+  { deep: true },
+)
 
-onMounted(() => page.load())
+onMounted(async () => {
+  page.load()
+  if (auth.isAdmin || auth.isSalesManager || auth.isManagement) {
+    users.value = await usersApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
+  }
+  principals.value = await principalsApi.list({ per_page: 100 }).then((r) => r.data).catch(() => [])
+})
 </script>
 
 <template>
   <div class="space-y-4">
     <div class="flex flex-wrap items-end gap-3">
-      <SearchInput v-model="page.search" class="w-full max-w-xs" placeholder="Cari nomor/opportunity..." @search="page.load()" />
+      <SearchInput v-model="page.search" class="w-full max-w-xs" placeholder="Cari nomor/opportunity/klien..." @search="page.load()" />
+      <div>
+        <label class="label">Tahun</label>
+        <select v-model="filters.year" class="input !w-36">
+          <option :value="undefined">Semua Periode</option>
+          <option v-for="y in AVAILABLE_YEARS" :key="y" :value="y">{{ y }}</option>
+        </select>
+      </div>
       <div>
         <label class="label">Status</label>
         <select v-model="filters.status" class="input !w-40">
@@ -73,9 +127,23 @@ onMounted(() => page.load())
           <option v-for="s in TRANSACTION_STATUSES" :key="s" :value="s">{{ s }}</option>
         </select>
       </div>
+      <div v-if="auth.isAdmin || auth.isSalesManager || auth.isManagement">
+        <label class="label">Sales</label>
+        <select v-model="filters.sales_id" class="input !w-44">
+          <option :value="undefined">Semua Sales</option>
+          <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="label">Principal</label>
+        <select v-model="filters.principal_id" class="input !w-44">
+          <option :value="undefined">Semua Principal</option>
+          <option v-for="p in principals" :key="p.id" :value="p.id">{{ p.name }}</option>
+        </select>
+      </div>
       <button
         v-if="auth.isAdmin || auth.isSales || auth.isSalesManager"
-        class="btn-primary"
+        class="btn-primary ml-auto"
         @click="router.push('/transactions/new')"
       >
         + Buat Transaction
@@ -113,6 +181,22 @@ onMounted(() => page.load())
           <div>
             <p class="text-xs text-slate-500">Status</p>
             <BaseBadge :value="detail.status" />
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">Opportunity</p>
+            <p class="text-sm font-medium text-slate-800">{{ detail.opportunity?.title || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">Perusahaan / Klien</p>
+            <p class="text-sm font-medium text-slate-800">{{ detail.company?.name || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">Sales</p>
+            <p class="text-sm font-medium text-slate-800">{{ detail.sales?.name || detail.user?.name || '-' }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-500">Principal</p>
+            <p class="text-sm font-medium text-slate-800">{{ detail.opportunity?.principal?.name || '-' }}</p>
           </div>
           <div>
             <p class="text-xs text-slate-500">Tanggal</p>

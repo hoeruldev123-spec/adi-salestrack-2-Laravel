@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Azelia Nurul Fitria",
+    "email": "azelia@salestrack.app",
+    "products": "Tableau, Qlik, Dataiku, Cloudera",
+    "focus": "Analytics, BI & Big Data"
+  },
+  {
+    "name": "Rizky Pratama",
+    "email": "rizky@salestrack.app",
+    "products": "Snowflake, ClickHouse",
+    "focus": "Cloud Data Warehouse & Analytics DB"
+  },
+  {
+    "name": "Dewi Lestari",
+    "email": "dewi@salestrack.app",
+    "products": "AWS, Hasura",
+    "focus": "Public Cloud & Modern APIs"
+  },
+  {
+    "name": "Ahmad Fauzan",
+    "email": "ahmad@salestrack.app",
+    "products": "Dell, Redis",
+    "focus": "Enterprise Hardware & High-Perf DB"
+  },
+  {
+    "name": "Siti Rahmawati",
+    "email": "siti@salestrack.app",
+    "products": "Talend, Denodo",
+    "focus": "Data Integration & Virtualization"
+  },
+  {
+    "name": "Yusuf Hidayat",
+    "email": "yusuf@salestrack.app",
+    "products": "Confluent, Alibaba Cloud",
+    "focus": "Real-time Data Streaming & Cloud"
+  },
+  {
+    "name": "Lina Marlina",
+    "email": "lina@salestrack.app",
+    "products": "Hewlett Packard (HPE)",
+    "focus": "Server & Hybrid Infrastructure"
+  },
+  {
+    "name": "Fajar Nugroho",
+    "email": "fajar@salestrack.app",
+    "products": "Huawei Cloud",
+    "focus": "Enterprise Cloud Solutions"
+  },
+  {
+    "name": "Nina Oktaviani",
+    "email": "nina@salestrack.app",
+    "products": "Cloud Ecosystem (Focus: AWS / Modern Stack)",
+    "focus": "Cloud Scaling & Enterprise Services"
+  },
+  {
+    "name": "Agus Setiawan",
+    "email": "agus@salestrack.app",
+    "products": "Hardware Ecosystem (Focus: Dell / HPE)",
+    "focus": "Hardware & Hybrid Cloud Infrastructure"
+  }
+]

@@ -6,6 +6,7 @@ export interface Principal {
   description?: string
   website?: string
   status: string
+  is_active?: boolean
   created_at?: string
 }
 

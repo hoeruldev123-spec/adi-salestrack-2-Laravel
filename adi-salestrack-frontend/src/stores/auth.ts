@@ -68,11 +68,14 @@ export const useAuthStore = defineStore('auth', () => {
     const matrix: Record<string, Role[]> = {
       dashboard: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'],
       master: ['ADMIN'],
+      catalog: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'],
       opportunities: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'],
       activities: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'],
       transactions: ['ADMIN', 'SALES', 'SALES_MANAGER', 'MANAGEMENT'],
-      analytics: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'],
+      analytics: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT', 'SALES'],
       forecast: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'],
+      simulation_results: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'],
+      recommendations: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'],
       scenario: ['ADMIN', 'SALES_MANAGER'],
       evaluation: ['ADMIN', 'SALES_MANAGER', 'MANAGEMENT'],
     }

@@ -32,6 +32,6 @@ class ForecastRunPolicy
 
     public function delete(User $user, ForecastRun $run): bool
     {
-        return $this->isAdmin($user);
+        return $this->isAdmin($user) || $this->isManager($user);
     }
 }

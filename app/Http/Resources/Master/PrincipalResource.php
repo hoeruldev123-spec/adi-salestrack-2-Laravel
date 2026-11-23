@@ -15,6 +15,7 @@ class PrincipalResource extends JsonResource
             'description' => $this->description,
             'website' => $this->website,
             'status' => $this->status,
+            'is_active' => (bool) $this->is_active,
             'products_count' => $this->whenCounted('products'),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),

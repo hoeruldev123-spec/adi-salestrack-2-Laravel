@@ -22,12 +22,12 @@ class ActivityPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $this->isAdmin($user) || $this->isManager($user) || $this->isSales($user);
     }
 
     public function update(User $user, Activity $activity): bool
     {
-        return $this->isViewer($user) || $activity->user_id === $user->id;
+        return $this->isAdmin($user) || $this->isManager($user) || $activity->user_id === $user->id;
     }
 
     public function delete(User $user, Activity $activity): bool

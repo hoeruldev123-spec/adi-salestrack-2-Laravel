@@ -197,8 +197,8 @@ onMounted(load)
       </div>
       <div class="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div>
-          <p class="text-xs text-slate-500">Nilai</p>
-          <p class="text-base font-bold text-slate-900">{{ formatRupiah(opp.value) }}</p>
+          <p class="text-xs text-slate-500">Nilai / Estimasi</p>
+          <p class="text-base font-bold text-slate-900">{{ formatRupiah(opp.value || opp.estimated_value) }}</p>
         </div>
         <div>
           <p class="text-xs text-slate-500">Probability</p>
@@ -206,11 +206,29 @@ onMounted(load)
         </div>
         <div>
           <p class="text-xs text-slate-500">Expected Close</p>
-          <p class="text-base font-semibold text-slate-800">{{ formatDate(opp.expected_close_date) }}</p>
+          <p class="text-base font-semibold text-slate-800">{{ formatDate(opp.expected_close_date || opp.closing_date) }}</p>
         </div>
         <div>
           <p class="text-xs text-slate-500">Dibuat</p>
           <p class="text-base font-semibold text-slate-800">{{ formatDate(opp.created_at, true) }}</p>
+        </div>
+      </div>
+
+      <div class="mt-4 border-t border-slate-100 pt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 text-xs text-slate-600">
+        <div>
+          <span class="text-slate-400">Principal:</span> {{ opp.principal?.name || '-' }}
+        </div>
+        <div>
+          <span class="text-slate-400">SA PIC:</span> {{ (opp as Record<string, unknown>).sa_pic || '-' }}
+        </div>
+        <div>
+          <span class="text-slate-400">Lisensi:</span> {{ (opp as Record<string, unknown>).license_type || '-' }}
+        </div>
+        <div>
+          <span class="text-slate-400">Deal Reg:</span> {{ (opp as Record<string, unknown>).deal_registration || '-' }}
+        </div>
+        <div v-if="(opp as Record<string, unknown>).remarks" class="col-span-full pt-1">
+          <span class="text-slate-400">Remarks:</span> {{ (opp as Record<string, unknown>).remarks }}
         </div>
       </div>
     </div>

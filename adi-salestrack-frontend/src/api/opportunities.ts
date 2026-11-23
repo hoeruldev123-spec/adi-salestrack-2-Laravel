@@ -6,8 +6,10 @@ import type { Principal } from './principals'
 export interface OpportunityItem {
   id?: number
   product_id: number | null
-  product?: { id: number; name: string; price?: number; sku?: string; type?: string }
+  price_list_id?: number | null
+  product?: { id: number; name: string; price?: number; sku?: string; type?: string; product_type?: string }
   name?: string
+  item_description?: string
   quantity: number
   unit_price: number
   discount: number
@@ -23,11 +25,21 @@ export interface Opportunity {
   principal_id: number | null
   principal?: Principal | null
   title: string
+  project_name?: string
+  client_name?: string
   description?: string
   value: number
+  estimated_value?: number
   stage: string
+  progress?: string
   probability: number
+  sa_pic?: string
+  license_type?: string
+  deal_registration?: string
   expected_close_date?: string | null
+  closing_date?: string | null
+  actual_closing_date?: string | null
+  remarks?: string
   source?: string
   status: string
   items?: OpportunityItem[]
@@ -50,12 +62,22 @@ interface RawOpportunity {
   user?: { id: number; name: string; email?: string } | null
   principal?: { id: number; name: string } | null
   title: string
+  project_name?: string | null
+  client_name?: string | null
   description?: string | null
   value: number
+  estimated_value?: number | null
   stage: string
+  progress?: string | null
   status: string
   probability: number
+  sa_pic?: string | null
+  license_type?: string | null
+  deal_registration?: string | null
   expected_close_date?: string | null
+  closing_date?: string | null
+  actual_closing_date?: string | null
+  remarks?: string | null
   source?: string | null
   created_at?: string
   updated_at?: string
@@ -71,11 +93,21 @@ function mapOpp(raw: RawOpportunity): Opportunity {
     principal_id: raw.principal?.id ?? null,
     principal: raw.principal ? { id: raw.principal.id, name: raw.principal.name, status: 'ACTIVE' } as Principal : null,
     title: raw.title,
+    project_name: raw.project_name ?? raw.title,
+    client_name: raw.client_name ?? raw.company?.name ?? '',
     description: raw.description ?? '',
     value: raw.value,
+    estimated_value: raw.estimated_value ?? raw.value,
     stage: raw.stage,
+    progress: raw.progress ?? raw.stage,
     probability: raw.probability,
-    expected_close_date: raw.expected_close_date ?? null,
+    sa_pic: raw.sa_pic ?? '',
+    license_type: raw.license_type ?? '',
+    deal_registration: raw.deal_registration ?? '',
+    expected_close_date: raw.expected_close_date ?? raw.closing_date ?? null,
+    closing_date: raw.closing_date ?? raw.expected_close_date ?? null,
+    actual_closing_date: raw.actual_closing_date ?? null,
+    remarks: raw.remarks ?? '',
     source: raw.source ?? '',
     status: raw.status,
     created_at: raw.created_at,

@@ -3,18 +3,191 @@ import { apiDelete, apiGet, apiList, apiPost } from './http'
 export interface ForecastRun {
   id: number
   name: string
+  forecast_name?: string | null
   forecast_type: string
+  forecast_scope?: string | null
+  revenue_category?: string | null
   period_start?: string | null
   period_end?: string | null
+  historical_start_date?: string | null
+  historical_end_date?: string | null
+  forecast_start_date?: string | null
+  forecast_end_date?: string | null
+  principal?: { id: number; name: string } | null
+  principal_id?: number | null
+  warnings?: string[]
   simulation_count: number
   confidence_level: number
   target_revenue?: number | null
+  predicted_revenue?: number | null
+  best_case?: number | null
+  worst_case?: number | null
+  most_likely?: number | null
+  actual_revenue?: number | null
+  mape?: number | null
   status: string
   error_message?: string | null
   created_by?: { id: number; name: string } | null
   started_at?: string | null
   completed_at?: string | null
   created_at?: string
+}
+
+export interface ForecastConfiguration {
+  forecast_scopes: string[]
+  revenue_categories: string[]
+  simulation: { default: number; min: number; max: number }
+  principals: Array<{ id: number; name: string }>
+  historical_period: { available_start: string | null; available_end: string }
+  forecast_period: { suggested_start: string; suggested_end: string }
+  recommendation_thresholds: Record<string, number>
+  opportunity_data: { open_count: number; has_data: boolean }
+}
+
+export interface ForecastOpportunity {
+  id: number
+  title: string
+  project_name?: string | null
+  client_name?: string | null
+  stage: string
+  status: string
+  principal_id?: number | null
+  principal_name?: string | null
+  value: number
+  probability: number
+  probability_percent: number
+  probability_source: string
+  closing_date?: string | null
+  last_activity_at?: string | null
+  categories: Record<string, number>
+  item_count: number
+}
+
+export interface ForecastResultSummary {
+  id: number
+  forecast_run_id: number
+  forecast_name: string
+  forecast_period: { start: string; end: string }
+  historical_period: { start: string; end: string }
+  simulation_count: number
+  total_opportunities: number
+  total_opportunity_value: number
+  expected_opportunity_value: number
+  minimum: number
+  maximum: number
+  mean: number
+  median: number
+  p10: number
+  p25: number
+  p50: number
+  p75: number
+  p90: number
+  p95: number
+  target_probability: number | null
+  expected_revenue: number
+  best_case: number
+  worst_case: number
+  most_likely: number
+  actual_revenue: number | null
+  mape: number | null
+  scenarios: {
+    worst_case: number
+    most_likely: number
+    best_case: number
+    expected_revenue: number
+  }
+  warnings: string[]
+  opportunities: ForecastOpportunity[]
+}
+
+export interface ForecastDistribution {
+  forecast_run_id: number
+  iteration_count: number
+  histogram: Array<{ bin_start: number; bin_end: number; count: number }>
+  bins: Array<{ bin_start: number; bin_end: number; count: number }>
+  p10?: number | null
+  p25?: number | null
+  p50?: number | null
+  p75?: number | null
+  p90?: number | null
+  p95?: number | null
+  mean?: number | null
+  median?: number | null
+  minimum?: number | null
+  maximum?: number | null
+  series: number[]
+}
+
+export interface ForecastBreakdownItem {
+  principal_id?: number | null
+  principal?: string
+  category?: string
+  opportunity_count: number
+  estimated_value: number
+  expected_revenue: number
+}
+
+export interface MonthlyEvaluationPeriod {
+  period: string
+  label: string
+  forecast: number
+  actual: number
+  error_percentage: number | null
+  status: string
+}
+
+export interface ForecastEvaluation {
+  forecast_run_id: number
+  status: string
+  forecast_period: { start: string; end: string }
+  periods: MonthlyEvaluationPeriod[]
+  mape: number | null
+  interpretation: string
+  evaluated_periods: number
+  skipped_periods: number
+  forecast_revenue: number
+  actual_revenue: number
+  total_forecast: number
+  total_actual: number
+}
+
+export interface ForecastRecommendation {
+  id: number
+  forecast_run_id: number
+  opportunity_id: number
+  recommendation_type: string
+  priority: string
+  recommendation_title: string
+  recommendation_description: string
+  estimated_value: number | null
+  probability: number | null
+  action_suggestion: string
+  forecast_run?: {
+    id: number
+    forecast_name: string
+    forecast_start_date?: string | null
+    forecast_end_date?: string | null
+  } | null
+  opportunity?: {
+    id: number
+    title: string
+    client_name?: string | null
+    stage: string
+    status: string
+    closing_date?: string | null
+    estimated_value: number
+    principal?: { id: number; name: string } | null
+    last_activity_at?: string | null
+  } | null
+  created_at?: string
+}
+
+export interface RecommendationSummary {
+  TOTAL: number
+  HIGH: number
+  MEDIUM: number
+  LOW: number
+  [key: string]: number
 }
 
 export interface ForecastResult {
@@ -63,12 +236,28 @@ export interface EvaluationResult {
 interface RawForecastRun {
   id: number
   name: string
+  forecast_name?: string | null
   forecast_type: string
+  forecast_scope?: string | null
+  revenue_category?: string | null
   period_start?: string | null
   period_end?: string | null
+  historical_start_date?: string | null
+  historical_end_date?: string | null
+  forecast_start_date?: string | null
+  forecast_end_date?: string | null
+  principal?: { id: number; name: string } | null
+  principal_id?: number | null
+  warnings?: string[]
   simulation_count: number
   confidence_level: number
   target_revenue?: number | null
+  predicted_revenue?: number | null
+  best_case?: number | null
+  worst_case?: number | null
+  most_likely?: number | null
+  actual_revenue?: number | null
+  mape?: number | null
   status: string
   created_by?: { id: number; name: string } | null
   started_at?: string | null
@@ -96,12 +285,27 @@ function mapRun(raw: RawForecastRun): ForecastRun {
   return {
     id: raw.id,
     name: raw.name,
+    forecast_name: raw.forecast_name,
     forecast_type: raw.forecast_type,
+    forecast_scope: raw.forecast_scope,
+    revenue_category: raw.revenue_category,
     period_start: raw.period_start,
     period_end: raw.period_end,
+    historical_start_date: raw.historical_start_date,
+    historical_end_date: raw.historical_end_date,
+    forecast_start_date: raw.forecast_start_date,
+    forecast_end_date: raw.forecast_end_date,
+    principal: raw.principal,
+    warnings: raw.warnings ?? [],
     simulation_count: raw.simulation_count,
     confidence_level: raw.confidence_level,
     target_revenue: raw.target_revenue,
+    predicted_revenue: raw.predicted_revenue,
+    best_case: raw.best_case,
+    worst_case: raw.worst_case,
+    most_likely: raw.most_likely,
+    actual_revenue: raw.actual_revenue,
+    mape: raw.mape,
     status: raw.status,
     created_by: raw.created_by,
     started_at: raw.started_at,
@@ -149,20 +353,39 @@ function mapScenario(raw: Record<string, unknown>): ForecastScenario {
 
 export const forecastsApi = {
   list: async (params?: Record<string, unknown>) => {
-    const res = await apiList<RawForecastRun>('/forecast-runs', { params })
+    const res = await apiList<RawForecastRun>('/forecasting', { params })
     return { data: res.data.map(mapRun), meta: res.meta }
   },
   get: async (id: number) => {
-    const raw = await apiGet<RawForecastRun>(`/forecast-runs/${id}`)
+    const raw = await apiGet<RawForecastRun>(`/forecasting/${id}`)
     return mapRun(raw)
   },
   create: async (payload: Partial<ForecastRun>) => {
-    const raw = await apiPost<{ forecast_run_id: number; status: string }>('/forecast-runs', payload)
+    const raw = await apiPost<{ forecast_run_id: number; status: string }>('/forecasting/run', payload)
     return { id: raw.forecast_run_id, status: raw.status, ...payload } as ForecastRun
   },
-  remove: (id: number) => apiDelete(`/forecast-runs/${id}`),
+  remove: (id: number) => apiDelete(`/forecasting/${id}`),
+  configuration: () => apiGet<ForecastConfiguration>('/forecasting/configuration'),
+  resultSummary: (id: number) => apiGet<ForecastResultSummary | null>(`/forecasting/${id}/results`),
+  distribution: (id: number) => apiGet<ForecastDistribution>(`/forecasting/${id}/distribution`),
+  principals: (id: number) => apiGet<ForecastBreakdownItem[]>(`/forecasting/${id}/principals`),
+  categories: (id: number) => apiGet<ForecastBreakdownItem[]>(`/forecasting/${id}/categories`),
+  monthlyEvaluation: (id: number) => apiGet<ForecastEvaluation>(`/forecasting/${id}/evaluation`),
+  recommendations: async (id: number, params?: Record<string, unknown>) => {
+    const res = await apiList<ForecastRecommendation>(`/forecasting/${id}/recommendations`, { params })
+    return { data: res.data, meta: res.meta }
+  },
+  allRecommendations: async (params?: Record<string, unknown>) => {
+    const res = await apiList<ForecastRecommendation>('/recommendations', { params })
+    return {
+      data: res.data,
+      meta: res.meta,
+      summary: (res.meta?.summary ?? { TOTAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }) as RecommendationSummary,
+    }
+  },
+  recommendation: (id: number) => apiGet<ForecastRecommendation>(`/recommendations/${id}`),
   result: async (id: number) => {
-    const raw = await apiGet<RawForecastResult>(`/forecast-runs/${id}/results`)
+    const raw = await apiGet<RawForecastResult>(`/forecasting/${id}/results`)
     return mapResult(raw)
   },
   scenarios: async (id: number) => {

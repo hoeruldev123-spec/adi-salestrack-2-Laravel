@@ -1,5 +1,6 @@
 import { apiGet } from './http'
 import { opportunitiesApi, type Opportunity } from './opportunities'
+import { useAuthStore } from '@/stores/auth'
 
 export interface RecentOpportunity {
   id: number
@@ -26,13 +27,14 @@ export interface DashboardData {
   average_deal_size: number
   forecast_revenue: number | null
   target_probability: number | null
-  monthly_revenue?: Array<{ month: string; revenue: number }>
+  monthly_revenue?: Array<{ month: string; period: string; revenue: number }>
   pipeline_by_stage?: Array<{ stage: string; value: number; count: number }>
   recent_opportunities?: RecentOpportunity[]
   top_sales?: TopSales[]
 }
 
 export interface RevenueData {
+  total?: number
   data: Array<{ period: string; revenue: number }>
   breakdown?: Record<string, Array<{ label: string; value: number }>>
 }
@@ -69,6 +71,8 @@ interface RawDashboard {
   open_opportunities: number
   won_opportunities: number
   transaction_count: number
+  forecast_revenue?: number | null
+  target_probability?: number | null
 }
 
 interface RawRevenue {
@@ -109,9 +113,10 @@ interface RawPerformance {
   average_sales_cycle_days: number
 }
 
-function mapMonthly(monthly: Record<string, number>): Array<{ period: string; revenue: number }> {
+function mapMonthly(monthly: Record<string, number>): Array<{ period: string; month: string; revenue: number }> {
   return Object.entries(monthly ?? {}).map(([period, revenue]) => ({
     period,
+    month: period,
     revenue: Number(revenue) || 0,
   }))
 }
@@ -138,21 +143,21 @@ function mapRecentOpportunity(op: Opportunity): RecentOpportunity {
 }
 
 function mapTopSales(raw: RawPerformance['by_salesperson']): TopSales[] {
-  return (raw ?? []).map((s) => ({
+  return (raw ?? []).map((s: any) => ({
     user_id: s.user?.id ?? 0,
     name: s.user?.name ?? 'Unknown',
     revenue: s.revenue ?? 0,
-    win_count: s.deals ?? 0,
-    win_rate: 0,
+    win_count: s.win_count ?? s.deals ?? 0,
+    win_rate: s.win_rate ?? 0,
   }))
 }
 
 export const analyticsApi = {
-  dashboard: async (year?: number) => {
+  dashboard: async (year?: number | string) => {
     const [dash, rev, pipe, perf] = await Promise.all([
       apiGet<RawDashboard>('/analytics/dashboard', { params: { year } }),
       apiGet<RawRevenue>('/analytics/revenue', { params: { year } }),
-      apiGet<RawPipeline>('/analytics/pipeline'),
+      apiGet<RawPipeline>('/analytics/pipeline', { params: { year } }),
       apiGet<RawPerformance>('/analytics/performance', { params: { year } }),
     ])
     let recent: Opportunity[] = []
@@ -161,14 +166,30 @@ export const analyticsApi = {
     } catch {
       // recent opportunities are optional
     }
+    let latestForecast: { mean?: number; target_probability?: number } | null = null
+    const auth = useAuthStore()
+    if (dash.forecast_revenue === undefined && auth.canAccess('forecast')) {
+      try {
+        const runs = await apiGet<any>('/forecast-runs', {
+          params: { per_page: 1, status: 'COMPLETED' },
+          silent: true,
+        })
+        const list = Array.isArray(runs) ? runs : runs?.data
+        if (list && list.length > 0 && list[0].result) {
+          latestForecast = list[0].result
+        }
+      } catch {
+        // forecast is optional
+      }
+    }
     return {
       total_revenue: dash.total_revenue,
       total_pipeline: dash.total_pipeline,
       won_revenue: dash.won_revenue,
       win_rate: dash.win_rate,
       average_deal_size: dash.average_deal_size,
-      forecast_revenue: null,
-      target_probability: null,
+      forecast_revenue: dash.forecast_revenue ?? latestForecast?.mean ?? null,
+      target_probability: dash.target_probability ?? latestForecast?.target_probability ?? null,
       monthly_revenue: mapMonthly(rev.monthly),
       pipeline_by_stage: stageBreakdown(pipe),
       recent_opportunities: recent.map(mapRecentOpportunity),
@@ -190,12 +211,13 @@ export const analyticsApi = {
       })),
     }
     return {
+      total: raw.total,
       data: mapMonthly(raw.monthly),
       breakdown,
     } as RevenueData
   },
-  pipeline: async () => {
-    const raw = await apiGet<RawPipeline>('/analytics/pipeline')
+  pipeline: async (params?: Record<string, unknown>) => {
+    const raw = await apiGet<RawPipeline>('/analytics/pipeline', { params })
     return {
       total_pipeline: raw.total_pipeline,
       open_count: raw.open ?? 0,
@@ -208,13 +230,13 @@ export const analyticsApi = {
   performance: async (params?: Record<string, unknown>) => {
     const raw = await apiGet<RawPerformance>('/analytics/performance', { params })
     return {
-      sales: (raw.by_salesperson ?? []).map((s) => ({
+      sales: (raw.by_salesperson ?? []).map((s: any) => ({
         user_id: s.user?.id ?? 0,
         name: s.user?.name ?? 'Unknown',
         revenue: s.revenue ?? 0,
-        opportunities_count: 0,
-        win_count: s.deals ?? 0,
-        win_rate: 0,
+        opportunities_count: s.opportunities_count ?? s.deals ?? 0,
+        win_count: s.win_count ?? s.deals ?? 0,
+        win_rate: s.win_rate ?? 0,
         average_deal_size: s.average_deal_size ?? 0,
         average_sales_cycle_days: raw.average_sales_cycle_days ?? null,
       })),

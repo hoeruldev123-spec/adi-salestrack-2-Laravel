@@ -17,22 +17,27 @@ import type { ColumnDef } from '@/components/common/CrudTable.vue'
 const router = useRouter()
 const ui = useUiStore()
 const auth = useAuthStore()
-const { formatDate } = useFormat()
+const { formatDate, formatRupiah } = useFormat()
 
 const filters = ref<Record<string, unknown>>({})
-const page = usePagination((params) => forecastsApi.list({ ...filters, ...params }))
+const page = usePagination((params) => forecastsApi.list({ ...filters.value, ...params }))
 
 const columns: ColumnDef[] = [
   {
     key: 'name',
-    label: 'Nama',
-    render: (r) => h('span', { class: 'font-medium text-slate-800' }, r.name as string),
+    label: 'Nama Forecast',
+    render: (r) => h('span', { class: 'font-medium text-slate-800' }, (r.forecast_name as string) || (r.name as string)),
   },
   { key: 'forecast_type', label: 'Tipe', render: (r) => h(BaseBadge, { value: r.forecast_type as string }) },
   {
     key: 'period',
-    label: 'Periode',
-    render: (r) => `${(r.period_start as string) ?? '-'} → ${(r.period_end as string) ?? '-'}`,
+    label: 'Periode Forecast',
+    render: (r) => `${(r.forecast_start_date as string) ?? (r.period_start as string) ?? '-'} → ${(r.forecast_end_date as string) ?? (r.period_end as string) ?? '-'}`,
+  },
+  {
+    key: 'predicted_revenue',
+    label: 'Expected Revenue',
+    render: (r) => formatRupiah(r.predicted_revenue as number | null),
   },
   {
     key: 'simulation_count',
@@ -48,7 +53,7 @@ function openDetail(row: Record<string, unknown>) {
 }
 
 async function remove(row: Record<string, unknown>) {
-  const ok = await ui.askConfirmation({ message: `Yakin ingin menghapus forecast run "${row.name}"?` })
+  const ok = await ui.askConfirmation({ message: `Yakin ingin menghapus forecast "${(row.forecast_name as string) || (row.name as string)}"?` })
   if (!ok) return
   try {
     await forecastsApi.remove(row.id as number)
@@ -59,7 +64,17 @@ async function remove(row: Record<string, unknown>) {
   }
 }
 
-watch(filters, () => page.load(), { deep: true })
+watch(
+  filters,
+  () => {
+    if (page.currentPage !== 1) {
+      page.currentPage = 1
+    } else {
+      page.load()
+    }
+  },
+  { deep: true },
+)
 
 onMounted(() => page.load())
 </script>

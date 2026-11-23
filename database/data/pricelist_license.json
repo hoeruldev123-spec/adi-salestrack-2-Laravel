@@ -1,0 +1,98 @@
+{
+  "Qlik": {
+    "principal": "Qlik",
+    "category": "LICENSE",
+    "license_price": 250000000,
+    "service_price": 75000000
+  },
+  "Confluent": {
+    "principal": "Confluent",
+    "category": "LICENSE",
+    "license_price": 450000000,
+    "service_price": 125000000
+  },
+  "Denodo": {
+    "principal": "Denodo",
+    "category": "LICENSE",
+    "license_price": 600000000,
+    "service_price": 150000000
+  },
+  "Snowflake": {
+    "principal": "Snowflake",
+    "category": "LICENSE",
+    "license_price": 300000000,
+    "service_price": 100000000
+  },
+  "Dataiku": {
+    "principal": "Dataiku",
+    "category": "LICENSE",
+    "license_price": 750000000,
+    "service_price": 175000000
+  },
+  "Cloudera": {
+    "principal": "Cloudera",
+    "category": "LICENSE",
+    "license_price": 650000000,
+    "service_price": 175000000
+  },
+  "Tableau": {
+    "principal": "Tableau",
+    "category": "LICENSE",
+    "license_price": 200000000,
+    "service_price": 75000000
+  },
+  "Hasura": {
+    "principal": "Hasura",
+    "category": "LICENSE",
+    "license_price": 150000000,
+    "service_price": 50000000
+  },
+  "ClickHouse": {
+    "principal": "ClickHouse",
+    "category": "LICENSE",
+    "license_price": 250000000,
+    "service_price": 100000000
+  },
+  "Alibaba Cloud": {
+    "principal": "Alibaba Cloud",
+    "category": "CLOUD",
+    "license_price": 150000000,
+    "service_price": 50000000
+  },
+  "Redis": {
+    "principal": "Redis",
+    "category": "LICENSE",
+    "license_price": 200000000,
+    "service_price": 75000000
+  },
+  "Talend": {
+    "principal": "Talend",
+    "category": "LICENSE",
+    "license_price": 400000000,
+    "service_price": 125000000
+  },
+  "AWS": {
+    "principal": "AWS",
+    "category": "CLOUD",
+    "license_price": 200000000,
+    "service_price": 75000000
+  },
+  "HPE": {
+    "principal": "HPE",
+    "category": "HARDWARE",
+    "license_price": 900000000,
+    "service_price": 150000000
+  },
+  "Huawei Cloud": {
+    "principal": "Huawei Cloud",
+    "category": "CLOUD",
+    "license_price": 175000000,
+    "service_price": 75000000
+  },
+  "Dell": {
+    "principal": "Dell",
+    "category": "HARDWARE",
+    "license_price": 750000000,
+    "service_price": 100000000
+  }
+}
